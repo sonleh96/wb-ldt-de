@@ -884,82 +884,57 @@ def run_analysis(
             else:
                 cached_content = cached_projects
             
-            # Split cached content back into initial and final recommendations
-            parts = cached_content.split("|||FINAL_PROJECTS|||")
-            if len(parts) == 2:
-                initial_recommendations = parts[0].strip()
-                final_project_selection = parts[1].strip()
+            # Split cached content into research, initial recommendations, and final projects
+            if "|||INITIAL_RECOMMENDATIONS|||" in cached_content and "|||FINAL_PROJECTS|||" in cached_content:
+                # New 3-part format: research|||INITIAL_RECOMMENDATIONS|||initial|||FINAL_PROJECTS|||final
+                parts = cached_content.split("|||INITIAL_RECOMMENDATIONS|||")
+                if len(parts) == 2:
+                    research_content = parts[0].strip()
+                    remaining = parts[1].split("|||FINAL_PROJECTS|||")
+                    if len(remaining) == 2:
+                        initial_recommendations = remaining[0].strip()
+                        final_project_selection = remaining[1].strip()
+                    else:
+                        initial_recommendations = remaining[0].strip()
+                        final_project_selection = remaining[0].strip()
+                else:
+                    # Fallback
+                    research_content = ""
+                    initial_recommendations = cached_content
+                    final_project_selection = cached_content
+            elif "|||FINAL_PROJECTS|||" in cached_content:
+                # Old 2-part format: initial|||FINAL_PROJECTS|||final
+                research_content = ""
+                parts = cached_content.split("|||FINAL_PROJECTS|||")
+                if len(parts) == 2:
+                    initial_recommendations = parts[0].strip()
+                    final_project_selection = parts[1].strip()
+                else:
+                    initial_recommendations = cached_content
+                    final_project_selection = cached_content
             else:
-                # If delimiter not found, use the full content for both parts
+                # No delimiters found
+                research_content = ""
                 initial_recommendations = cached_content
                 final_project_selection = cached_content
             
-            # We still need to handle background research even for cached projects
-            # CREATE CACHE KEY FOR REGIONAL SUMMARY
-            research_cache_key = f"regional_summary_{region_temp}_{subcategory}"
-            
-            # CHECK IF REGIONAL SUMMARY EXISTS IN CACHE
-            if research_cache_key not in st.session_state:
+            # Display cached research and project recommendations
+            if research_content:
                 if language == 'en':
                     st.subheader("Background Research")
-                    status_temp = f"Doing some background research on {region_temp}... This may take a moment."
+                    st.write(research_content)
                 else:
                     st.subheader("Истраживање позадине")
-                    status_temp = f"Проводим нека истраживања о {region_temp}... Ово може потрајати неколико тренутака."
-                
-                # SYSTEM MESSAGE for research
-                research_system_message = """
-                    # Role
-                    You are a policy researcher and data scientist specializing in countries located in the Western Balkans. 
-                    
-                    # Instructions
-                    -   You will output only relevant responses 
-                    -   You will only search for and retain facts
-                    -   Provide accurate sources (if available) for your information"""
-
-                # FIRST AGENT - General Regional Summary
-                task_research = f"""
-                    # Task
-                    -   Provide a summary regarding the {region_temp} municipality of Serbia when it comes to {subcategory}, focusing on its assets, weaknesses, and most relevant challenges.
-                    -   Also look for basic information regarding the municipality such as its location, population, etc..,
-                    
-                    # Requirements
-                    - Summarize the results in ≤ 150 words.
-                    - Focus on factual, data-driven insights
-                    - Maintain consistent structure and terminology
-                    """
-                
-                with st.status(status_temp, expanded=True) as status:
-                    research_messages = [{"role": "system", "content": research_system_message}, 
-                                        {"role": "user", "content": task_research}]
-
-                    research_response = client.chat.completions.create(
-                        model="gpt-4o", 
-                        messages=research_messages, 
-                        temperature=0.1, 
-                        seed=42,
-                        max_tokens=200
-                    )
-                    # CACHE THE REGIONAL SUMMARY
-                    st.session_state[research_cache_key] = research_response.choices[0].message.content
+                    st.write(research_content)
             
-            # GET REGIONAL SUMMARY FROM CACHE
-            regional_summary = st.session_state[research_cache_key]
-            
-            # DISPLAY REGIONAL SUMMARY
+            # Display project recommendations
             if language == 'en':
-                st.subheader("Background Research")
-                st.write(regional_summary)
-                
                 st.subheader("Initial Project Recommendations")
                 st.write(initial_recommendations)
                 
                 st.subheader("Final Project Selections")
                 st.write(final_project_selection)
             else:
-                st.subheader("Истраживање позадине")
-                st.write(translate_en_to_sr(regional_summary))
-                
                 st.subheader("Прве препоруке за пројекте")
                 st.write(initial_recommendations)
                 
@@ -983,63 +958,43 @@ def run_analysis(
                         region_temp, subcategory, 'projects', 
                         translated_projects, language
                     )
-                    # Split translated content and display
-                    parts = translated_projects.split("|||FINAL_PROJECTS|||")
-                    if len(parts) == 2:
-                        initial_recommendations = parts[0].strip()
-                        final_project_selection = parts[1].strip()
+                    # Split translated content into research, initial recommendations, and final projects
+                    if "|||INITIAL_RECOMMENDATIONS|||" in translated_projects and "|||FINAL_PROJECTS|||" in translated_projects:
+                        # New 3-part format: research|||INITIAL_RECOMMENDATIONS|||initial|||FINAL_PROJECTS|||final
+                        parts = translated_projects.split("|||INITIAL_RECOMMENDATIONS|||")
+                        if len(parts) == 2:
+                            research_content = parts[0].strip()
+                            remaining = parts[1].split("|||FINAL_PROJECTS|||")
+                            if len(remaining) == 2:
+                                initial_recommendations = remaining[0].strip()
+                                final_project_selection = remaining[1].strip()
+                            else:
+                                initial_recommendations = remaining[0].strip()
+                                final_project_selection = remaining[0].strip()
+                        else:
+                            research_content = ""
+                            initial_recommendations = translated_projects
+                            final_project_selection = translated_projects
+                    elif "|||FINAL_PROJECTS|||" in translated_projects:
+                        # Old 2-part format: initial|||FINAL_PROJECTS|||final
+                        research_content = ""
+                        parts = translated_projects.split("|||FINAL_PROJECTS|||")
+                        if len(parts) == 2:
+                            initial_recommendations = parts[0].strip()
+                            final_project_selection = parts[1].strip()
+                        else:
+                            initial_recommendations = translated_projects
+                            final_project_selection = translated_projects
                     else:
+                        # No delimiters found
+                        research_content = ""
                         initial_recommendations = translated_projects
                         final_project_selection = translated_projects
                     
-                    # Handle background research for Serbian translation case
-                    research_cache_key = f"regional_summary_{region_temp}_{subcategory}"
-                    
-                    # CHECK IF REGIONAL SUMMARY EXISTS IN CACHE
-                    if research_cache_key not in st.session_state:
+                    # Display cached research and project recommendations
+                    if research_content:
                         st.subheader("Истраживање позадине")
-                        status_temp = f"Проводим нека истраживања о {region_temp}... Ово може потрајати неколико тренутака."
-                        
-                        # SYSTEM MESSAGE for research
-                        research_system_message = """
-                            # Role
-                            You are a policy researcher and data scientist specializing in countries located in the Western Balkans. 
-                            
-                            # Instructions
-                            -   You will output only relevant responses 
-                            -   You will only search for and retain facts
-                            -   Provide accurate sources (if available) for your information"""
-
-                        # FIRST AGENT - General Regional Summary
-                        task_research = f"""
-                            # Task
-                            -   Provide a summary regarding the {region_temp} municipality of Serbia when it comes to {subcategory}, focusing on its assets, weaknesses, and most relevant challenges.
-                            -   Also look for basic information regarding the municipality such as its location, population, etc..,
-                            
-                            # Requirements
-                            - Summarize the results in ≤ 150 words.
-                            - Focus on factual, data-driven insights
-                            - Maintain consistent structure and terminology
-                            """
-                        
-                        with st.status(status_temp, expanded=True) as status:
-                            research_messages = [{"role": "system", "content": research_system_message}, 
-                                                {"role": "user", "content": task_research}]
-
-                            research_response = client.chat.completions.create(
-                                model="gpt-4o", 
-                                messages=research_messages, 
-                                temperature=0.1, 
-                                seed=42,
-                                max_tokens=200
-                            )
-                            # CACHE THE REGIONAL SUMMARY
-                            st.session_state[research_cache_key] = research_response.choices[0].message.content
-                    
-                    # GET REGIONAL SUMMARY FROM CACHE AND DISPLAY
-                    regional_summary = st.session_state[research_cache_key]
-                    st.subheader("Истраживање позадине")
-                    st.write(translate_en_to_sr(regional_summary))
+                        st.write(research_content)
                     
                     # Display translated cached responses
                     st.subheader("Прве препоруке за пројекте")
@@ -1079,44 +1034,33 @@ def run_analysis(
             - Maintain consistent structure and terminology
             """
 
-        # CREATE CACHE KEY FOR REGIONAL SUMMARY
-        research_cache_key = f"regional_summary_{region_temp}_{subcategory}"
-        
-        # CHECK IF REGIONAL SUMMARY EXISTS IN CACHE
-        if research_cache_key not in st.session_state:
-            if language == 'en':
-                st.subheader("Background Research")
-                status_temp = f"Doing some background research on {region_temp}... This may take a moment."
-            else:
-                st.subheader("Истраживање позадине")
-                status_temp = f"Проводим нека истраживања о {region_temp}... Ово може потрајати неколико тренутака."
-            
-            with st.status(status_temp, expanded=True) as status:
-                research_messages = [{"role": "system", "content": research_system_message}, 
-                                    {"role": "user", "content": task_research}]
-
-                research_response = client.chat.completions.create(
-                    model="gpt-4o", 
-                    messages=research_messages, 
-                    temperature=RESEARCH_TEMPERATURE, 
-                    seed=RANDOM_SEED,
-                    max_tokens=200
-                )
-                # CACHE THE REGIONAL SUMMARY
-                st.session_state[research_cache_key] = research_response.choices[0].message.content
-        
-        # GET REGIONAL SUMMARY FROM CACHE
-        regional_summary = st.session_state[research_cache_key]
-        
-        # DISPLAY REGIONAL SUMMARY
+        # Generate and display background research before project recommendations
         if language == 'en':
-            if research_cache_key not in st.session_state or st.session_state.get('show_research', False):
-                st.subheader("Background Research")
-                st.write(regional_summary)
+            st.subheader("Background Research")
+            status_temp = f"Doing some background research on {region_temp}... This may take a moment."
         else:
-            if research_cache_key not in st.session_state or st.session_state.get('show_research', False):
-                st.subheader("Истраживање позадине")
-                st.write(translate_en_to_sr(regional_summary))
+            st.subheader("Истраживање позадине")
+            status_temp = f"Проводим нека истраживања о {region_temp}... Ово може потрајати неколико тренутака."
+        
+        with st.status(status_temp, expanded=True) as status:
+            research_messages = [{"role": "system", "content": research_system_message}, 
+                                {"role": "user", "content": task_research}]
+
+            research_response = client.chat.completions.create(
+                model="gpt-4o", 
+                messages=research_messages, 
+                temperature=RESEARCH_TEMPERATURE, 
+                seed=RANDOM_SEED,
+                max_tokens=200
+            )
+            regional_summary = research_response.choices[0].message.content
+        
+        # Display background research
+        if language == 'en':
+            st.write(regional_summary)
+        else:
+            translated_research = translate_en_to_sr(regional_summary)
+            st.write(translated_research)
 
         # SECOND AGENT - Project Recommendations
         project_system_message = f"""
@@ -1309,8 +1253,8 @@ def run_analysis(
             st.subheader("Final Project Selections")
             st.write(final_project_selection)
             
-            # Cache the combined results for English
-            combined_content = f"{initial_recommendations}|||FINAL_PROJECTS|||{final_project_selection}"
+            # Cache the combined results for English with research
+            combined_content = f"{regional_summary}|||INITIAL_RECOMMENDATIONS|||{initial_recommendations}|||FINAL_PROJECTS|||{final_project_selection}"
             cache_manager.save_response(
                 region_temp, subcategory, 'projects', 
                 combined_content, language
@@ -1321,7 +1265,7 @@ def run_analysis(
 
         elif language == 'sr':
             # For Serbian, first cache the English version, then translate and cache Serbian
-            combined_english_content = f"{initial_recommendations}|||FINAL_PROJECTS|||{final_project_selection}"
+            combined_english_content = f"{regional_summary}|||INITIAL_RECOMMENDATIONS|||{initial_recommendations}|||FINAL_PROJECTS|||{final_project_selection}"
             cache_manager.save_response(
                 region_temp, subcategory, 'projects', 
                 combined_english_content, 'en'
@@ -1335,8 +1279,8 @@ def run_analysis(
             st.subheader("Коначни избор пројеката")
             st.write(translated_final)
             
-            # Cache the Serbian version
-            combined_serbian_content = f"{translated_initial}|||FINAL_PROJECTS|||{translated_final}"
+            # Cache the Serbian version (research was already translated and displayed earlier)
+            combined_serbian_content = f"{translated_research}|||INITIAL_RECOMMENDATIONS|||{translated_initial}|||FINAL_PROJECTS|||{translated_final}"
             cache_manager.save_response(
                 region_temp, subcategory, 'projects', 
                 combined_serbian_content, language
