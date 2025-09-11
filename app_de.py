@@ -13,25 +13,6 @@ from PIL import Image
 
 from general_workflow import run_analysis
 
-### COUNTRY PUBLIC PROJECTS RESEARCH PLAN 
-# Sources: LangChain, LangFlow, Exa AI
-# 1. A separate module will research and compile public projects data for the selected country
-# 2. This module will be responsible for the following:
-#    User input → Planner (breaks down tasks)
-#       - Interpret input query—“compile public projects in X country across timeframes”—and break it into discrete subtasks 
-#    → Source Finder (parallel fetches)
-#       - For each subtask, fetch relevant sources via search, crawling, APIs, or government databases. 
-#       - Prioritize quality, domain specificity, and relevance.
-#       - Tool integration: Could include Google/Bing search, government APIs, or a focused crawler
-#    → Filter / Extractor 
-#       - Clean the retrieved raw data—filter out irrelevant hits, extract structured details like project title, budget, timeline, status, links, etc
-#       - Can be pre-defined functions
-#    → Summarizer
-#       - Collect and format citations, verify credibility, flag inconsistencies or missing info for revision loops
-#    → Citation Manager / Reviewer
-#    → Aggregator → final report
-#    ← (Optional) Feedback loop if coverage is incomplete
-
 # Access secrets directly, no need for json.loads()
 openai_api_key = os.getenv('openai_apikey')
 
@@ -70,6 +51,44 @@ os.environ['OPENAI_API_KEY'] = openai_api_key
 
 # Initialize Google Cloud Storage client
 BUCKET_NAME = "wb-ldt"
+
+# Configure page layout to use wide mode for better space utilization
+st.set_page_config(
+    page_title="LDT Decision Engine",
+    page_icon="🌍",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Custom CSS to maximize content space utilization
+st.markdown("""
+    <style>
+    /* Reduce padding around main content area */
+    .main .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+        padding-left: 2rem;
+        padding-right: 2rem;
+        max-width: none;
+    }
+    
+    /* Reduce sidebar width slightly to give more space to main content */
+    .css-1d391kg {
+        width: 300px;
+    }
+    
+    /* Ensure content uses full width */
+    .stApp > div {
+        width: 100%;
+    }
+    
+    /* Improve text readability with better spacing */
+    .stMarkdown {
+        text-align: justify;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
 
 @st.cache_data(ttl=3600)  # Cache for 1 hour
 def read_csv_from_gcs(bucket_name: str, file_path: str, **kwargs: Any) -> pd.DataFrame:
