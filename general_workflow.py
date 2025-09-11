@@ -2,12 +2,255 @@ import json
 import os
 import re
 from typing import List, Dict, Tuple, Optional, Any
+from datetime import datetime
+import hashlib
+from io import BytesIO
 
 from openai import OpenAI
 import pandas as pd
 import streamlit as st
+from google.cloud import storage
+from google.oauth2 import service_account
 
 os.environ["OPENAI_API_KEY"] = os.getenv('openai_apikey')
+
+
+### RESPONSE CACHING IMPROVEMENT PLAN
+# 1. Everytime the user runs a new combination of region and subcategory, the analysis will use the LLMs to generate responses
+# 2. The responses will be stored in a database to serve as response cache, saved as a JSON
+# 2a. This is done for both English and Serbian, where the first Serbian unique response will also be saved in the response cache as the translation of the saved English response
+# 3. The response cache will be loaded to serve as a response cache for the same combination of region and subcategory
+# 4. This is to ensure that the same response is not generated multiple times for the same combination of region and subcategory across different instances of the app
+# 5. Users are guaranteed to see the same response for the same combination of region and subcategory across different instances of the app. This is a direct fix for the ongoing issues of using LLMs to generate responses
+# 6. The response cache is only updated with a new region and subcategory combination, or when the admin of this repo makes changes to the prompts or functions
+
+
+### How it works
+# 1. The user selects a region and a subcategory
+# 2. The app will check the response cache for the combination of region and subcategory
+# 3. If the response is found in the cache, the app will load and display the response
+# 4. If the response is not found in the cache, the app will generate a new response
+# 5. The new response will be saved in the response cache. The English and Serbian responses will be saved separately
+# 6. The Serbian response will load the existing English response from the cache, it it exists, and translate it to Serbian. 
+# Otherwise, generating a new Serbian response will also save the pre-requisite English response in the cache
+
+
+class ResponseCacheManager:
+    """
+    Manages caching of LLM responses using Google Cloud Storage for consistent outputs across app instances.
+    
+    The cache is organized by region and subcategory combinations, with separate
+    entries for English and Serbian responses. This ensures deterministic outputs
+    and reduces API costs.
+    """
+    
+    def __init__(self, storage_client: storage.Client, bucket_name: str = "wb-ldt", 
+                 cache_path: str = "decision_engine/cached_responses"):
+        """
+        Initialize the cache manager with GCS client.
+        
+        Args:
+            storage_client (storage.Client): Google Cloud Storage client
+            bucket_name (str): GCS bucket name
+            cache_path (str): Path prefix in the bucket for cache files
+        """
+        self.storage_client = storage_client
+        self.bucket_name = bucket_name
+        self.cache_path = cache_path
+        self.cache_version = "1.0"  # Increment when prompts/functions change
+        self.bucket = self.storage_client.bucket(bucket_name)
+        self.cache_file_path = f"{cache_path}/response_cache.json"
+        self.cache = self._load_cache()
+    
+    def _load_cache(self) -> Dict[str, Any]:
+        """Load the cache from GCS or create empty cache."""
+        try:
+            blob = self.bucket.blob(self.cache_file_path)
+            if blob.exists():
+                cache_content = blob.download_as_text(encoding='utf-8')
+                cache_data = json.loads(cache_content)
+                
+                # Validate cache version
+                if cache_data.get('version') != self.cache_version:
+                    st.warning("Cache version mismatch. Creating new cache.")
+                    return self._create_empty_cache()
+                return cache_data
+            else:
+                return self._create_empty_cache()
+        except Exception as e:
+            st.warning(f"Failed to load cache from GCS: {e}. Creating new cache.")
+            return self._create_empty_cache()
+    
+    def _create_empty_cache(self) -> Dict[str, Any]:
+        """Create an empty cache structure."""
+        return {
+            "version": self.cache_version,
+            "created_at": datetime.now().isoformat(),
+            "last_updated": datetime.now().isoformat(),
+            "responses": {}
+        }
+    
+    def _save_cache(self) -> None:
+        """Save the cache to GCS."""
+        self.cache["last_updated"] = datetime.now().isoformat()
+        try:
+            blob = self.bucket.blob(self.cache_file_path)
+            cache_json = json.dumps(self.cache, ensure_ascii=False, indent=2)
+            blob.upload_from_string(cache_json, content_type='application/json')
+        except Exception as e:
+            st.error(f"Failed to save cache to GCS: {e}")
+    
+    def _generate_cache_key(self, region: str, subcategory: str, analysis_type: str, language: str = 'en') -> str:
+        """
+        Generate a unique cache key for a specific analysis request.
+        
+        Args:
+            region (str): Region name
+            subcategory (str): Subcategory name  
+            analysis_type (str): Type of analysis ('indicators', 'regional', 'projects')
+            language (str): Language code ('en' or 'sr')
+            
+        Returns:
+            str: Unique cache key
+        """
+        # Normalize inputs to ensure consistent keys
+        normalized_key = f"{region.strip()}_{subcategory.strip()}_{analysis_type}_{language}"
+        return normalized_key.lower().replace(' ', '_')
+    
+    def get_cached_response(self, region: str, subcategory: str, analysis_type: str, language: str = 'en') -> Optional[Dict[str, Any]]:
+        """
+        Retrieve a cached response if it exists.
+        
+        Args:
+            region (str): Region name
+            subcategory (str): Subcategory name
+            analysis_type (str): Type of analysis ('indicators', 'regional', 'projects')
+            language (str): Language code ('en' or 'sr')
+            
+        Returns:
+            Optional[Dict[str, Any]]: Cached response or None if not found
+        """
+        cache_key = self._generate_cache_key(region, subcategory, analysis_type, language)
+        return self.cache["responses"].get(cache_key)
+    
+    def save_response(self, region: str, subcategory: str, analysis_type: str, response: str, language: str = 'en') -> None:
+        """
+        Save a response to the cache.
+        
+        Args:
+            region (str): Region name
+            subcategory (str): Subcategory name
+            analysis_type (str): Type of analysis ('indicators', 'regional', 'projects')
+            response (str): The response content to cache
+            language (str): Language code ('en' or 'sr')
+        """
+        cache_key = self._generate_cache_key(region, subcategory, analysis_type, language)
+        self.cache["responses"][cache_key] = {
+            "content": response,
+            "created_at": datetime.now().isoformat(),
+            "region": region,
+            "subcategory": subcategory,
+            "analysis_type": analysis_type,
+            "language": language
+        }
+        self._save_cache()
+    
+    def has_english_response(self, region: str, subcategory: str, analysis_type: str) -> bool:
+        """
+        Check if an English response exists for the given parameters.
+        
+        This is useful for Serbian translation caching - we can reuse English responses.
+        
+        Args:
+            region (str): Region name
+            subcategory (str): Subcategory name
+            analysis_type (str): Type of analysis ('indicators', 'regional', 'projects')
+            
+        Returns:
+            bool: True if English response exists
+        """
+        return self.get_cached_response(region, subcategory, analysis_type, 'en') is not None
+    
+    def get_english_response(self, region: str, subcategory: str, analysis_type: str) -> Optional[str]:
+        """
+        Get the English response content for translation to Serbian.
+        
+        Args:
+            region (str): Region name
+            subcategory (str): Subcategory name
+            analysis_type (str): Type of analysis ('indicators', 'regional', 'projects')
+            
+        Returns:
+            Optional[str]: English response content or None if not found
+        """
+        cached_response = self.get_cached_response(region, subcategory, analysis_type, 'en')
+        if cached_response:
+            return cached_response['content']
+        return None
+    
+    def clear_cache(self) -> None:
+        """Clear all cached responses (for admin use)."""
+        self.cache = self._create_empty_cache()
+        self._save_cache()
+        st.success("Response cache cleared successfully.")
+    
+    def get_cache_stats(self) -> Dict[str, Any]:
+        """Get statistics about the cache."""
+        total_responses = len(self.cache["responses"])
+        english_responses = sum(1 for key in self.cache["responses"].keys() if key.endswith('_en'))
+        serbian_responses = sum(1 for key in self.cache["responses"].keys() if key.endswith('_sr'))
+        
+        return {
+            "total_responses": total_responses,
+            "english_responses": english_responses,
+            "serbian_responses": serbian_responses,
+            "cache_version": self.cache_version,
+            "created_at": self.cache.get("created_at"),
+            "last_updated": self.cache.get("last_updated"),
+            "gcs_path": f"gs://{self.bucket_name}/{self.cache_file_path}"
+        }
+
+    def show_cache_admin_panel(self) -> None:
+        """Display cache administration panel in Streamlit sidebar."""
+        with st.sidebar.expander("🗄️ Cache Management (GCS)", expanded=False):
+            stats = self.get_cache_stats()
+            
+            st.write("**Cache Statistics:**")
+            st.write(f"- Total responses: {stats['total_responses']}")
+            st.write(f"- English responses: {stats['english_responses']}")
+            st.write(f"- Serbian responses: {stats['serbian_responses']}")
+            st.write(f"- Cache version: {stats['cache_version']}")
+            st.write(f"- GCS Path: `{stats['gcs_path']}`")
+            
+            if stats['last_updated']:
+                st.write(f"- Last updated: {stats['last_updated'][:19]}")
+            
+            # Cache management buttons
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if st.button("📊 View Cache", help="View detailed cache contents"):
+                    st.json(self.cache)
+            
+            with col2:
+                if st.button("🗑️ Clear Cache", help="Clear all cached responses"):
+                    self.clear_cache()
+            
+            # Export functionality
+            st.write("**Export:**")
+            if st.button("📥 Export Cache", help="Download cache as JSON"):
+                st.download_button(
+                    label="Download cache.json",
+                    data=json.dumps(self.cache, ensure_ascii=False, indent=2),
+                    file_name=f"response_cache_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                    mime="application/json"
+                )
+            
+            # Reload cache button
+            if st.button("🔄 Reload Cache", help="Reload cache from GCS"):
+                self.cache = self._load_cache()
+                st.success("Cache reloaded from GCS")
+
 
 def run_analysis(
     df_indicatorlist: pd.DataFrame,
@@ -15,6 +258,7 @@ def run_analysis(
     averages_df: pd.DataFrame,
     df_projects: pd.DataFrame,
     regions: List[str],
+    storage_client: storage.Client,
     language: str = 'en'
 ) -> None:
     """
@@ -31,12 +275,19 @@ def run_analysis(
         averages_df (pd.DataFrame): DataFrame containing national averages for each indicator
         df_projects (pd.DataFrame): DataFrame containing project examples and their details
         regions (List[str]): List of available regions for analysis
+        storage_client (storage.Client): Google Cloud Storage client for caching
         language (str, optional): Language code for the interface. Defaults to 'en'.
                                 Supported values: 'en' (English), 'sr' (Serbian)
     
     Returns:
         None: This function updates the Streamlit interface directly
     """
+    
+    # Initialize the response cache manager with GCS client
+    cache_manager = ResponseCacheManager(storage_client)
+    
+    # Show cache admin panel in sidebar (for developers/admins)
+    cache_manager.show_cache_admin_panel()
     
     ##Functions Required For Analysis##
 
@@ -297,7 +548,7 @@ def run_analysis(
         language: str = 'en'
     ) -> str:
         """
-        Analyzes indicators for a specific category and region.
+        Analyzes indicators for a specific category and region with response caching.
 
         Args:
             category_temp (str): Category to analyze
@@ -308,13 +559,40 @@ def run_analysis(
         Returns:
             str: Formatted analysis text with relevant indicators
         """
-
         
+        # Check cache first
+        cached_response = cache_manager.get_cached_response(
+            region_temp, category_temp, 'indicators', language
+        )
+        
+        if cached_response:
+            # Return cached response content
+            if isinstance(cached_response, dict):
+                return cached_response['content']
+            return cached_response
+
+        # If Serbian is requested but no Serbian cache exists, check for English version for translation optimization
+        if language == 'sr' and not cached_response:
+            english_response = cache_manager.get_english_response(
+                region_temp, category_temp, 'indicators'
+            )
+            if english_response:
+                # Translate existing English response and cache the Serbian version
+                flag = f"Преводим анализу за {category_temp} у региону {region_temp}..."
+                with st.status(flag, expanded=True) as status:
+                    translated_response = translate_en_to_sr(english_response)
+                    # Cache the translated response for future Serbian requests
+                    cache_manager.save_response(
+                        region_temp, category_temp, 'indicators', 
+                        translated_response, language
+                    )
+                    return translated_response
+
+        # Generate new response if not in cache
         if language == 'en':
             flag = f"Starting analysis on {category_temp} in {region_temp}..."
             df_temp = df_temp[df_temp['SubCategory'].str.contains(category_temp, case=False, na=False)]
-
-        if language == 'sr':
+        elif language == 'sr':
             flag = f"Почиње анализа категорије {category_temp} у региону {region_temp}..."
             df_temp = df_temp[df_temp['SubCategory'].str.contains(category_options_en[category_options_sr.index(category_temp)], 
                                                                   case=False, na=False)]
@@ -334,22 +612,38 @@ def run_analysis(
                 This is the dataframe: {json_columns}"""
             
             messages = [
-            {"role": "system", "content": SYSTEM_MESSAGE},  # System message
-            {"role": "user", "content": question_output}]  # User message
+                {"role": "system", "content": SYSTEM_MESSAGE},
+                {"role": "user", "content": question_output}
+            ]
 
             response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=messages,
-                    temperature=0.3,
-                    seed=42
-                )
+                model="gpt-4o-mini",
+                messages=messages,
+                temperature=0.3,
+                seed=42
+            )
+            
+            response_content = response.choices[0].message.content
             
             if language == 'en':
-                # st.subheader("Relevant Indicators")
-                return response.choices[0].message.content
-            if language == 'sr':
-                # st.subheader("Релевантни индикатори")
-                return translate_en_to_sr(response.choices[0].message.content)
+                # Cache the English response
+                cache_manager.save_response(
+                    region_temp, category_temp, 'indicators', 
+                    response_content, language
+                )
+                return response_content
+            elif language == 'sr':
+                # For Serbian, first cache the English response, then translate
+                cache_manager.save_response(
+                    region_temp, category_temp, 'indicators', 
+                    response_content, 'en'
+                )
+                translated_response = translate_en_to_sr(response_content)
+                cache_manager.save_response(
+                    region_temp, category_temp, 'indicators', 
+                    translated_response, language
+                )
+                return translated_response
 
     def build_comparison_lines(
         regional_df: pd.DataFrame,
@@ -400,7 +694,7 @@ def run_analysis(
         language: str = 'en'
     ) -> str:
         """
-        Performs detailed regional analysis using a two-step RAG pipeline.
+        Performs detailed regional analysis using a two-step RAG pipeline with response caching.
 
         Args:
             region_name (str): Name of the region to analyze
@@ -411,9 +705,38 @@ def run_analysis(
         Returns:
             str: Comprehensive regional analysis text
         """
+        
+        # Check cache first
+        cached_response = cache_manager.get_cached_response(
+            region_name, category_temp, 'regional', language
+        )
+        
+        if cached_response:
+            if isinstance(cached_response, dict):
+                return cached_response['content']
+            return cached_response
+
+        # If Serbian is requested but no Serbian cache exists, check for English version for translation optimization
+        if language == 'sr' and not cached_response:
+            english_response = cache_manager.get_english_response(
+                region_name, category_temp, 'regional'
+            )
+            if english_response:
+                # Translate existing English response and cache the Serbian version
+                flag = f"Преводим регионалну анализу за {category_temp} у региону {region_name}..."
+                with st.status(flag, expanded=True) as status:
+                    translated_response = translate_en_to_sr(english_response)
+                    # Cache the translated response for future Serbian requests
+                    cache_manager.save_response(
+                        region_name, category_temp, 'regional', 
+                        translated_response, language
+                    )
+                    return translated_response
+        
+        # Generate new response if not in cache
         if language == 'en':
             flag = "Conducting regional analysis..."
-        if language == 'sr':
+        elif language == 'sr':
             flag = "Извођење регионалне анализе..."
 
         with st.status(flag, expanded=True) as status:
@@ -506,31 +829,226 @@ def run_analysis(
                 temperature=0
             )
 
+            response_content = narrative_response.choices[0].message.content
+            
             if language == 'en':
-                # st.subheader("Comprehensive Regional Analysis")
-                return narrative_response.choices[0].message.content
-            if language == 'sr':
-                # st.subheader("Свеобухватна регионална анализа")
-                return translate_en_to_sr(narrative_response.choices[0].message.content)
+                # Cache the English response
+                cache_manager.save_response(
+                    region_name, category_temp, 'regional', 
+                    response_content, language
+                )
+                return response_content
+            elif language == 'sr':
+                # For Serbian, first cache the English response, then translate
+                cache_manager.save_response(
+                    region_name, category_temp, 'regional', 
+                    response_content, 'en'
+                )
+                translated_response = translate_en_to_sr(response_content)
+                cache_manager.save_response(
+                    region_name, category_temp, 'regional', 
+                    translated_response, language
+                )
+                return translated_response
 
     def project_recommendation_agent(
         region_temp: str,
         subcategory: str,
-        regional_analysis: str
+        regional_analysis: str,
+        language: str = 'en'
     ) -> Tuple[str, str]:
         """
-        Generates project recommendations based on regional analysis.
+        Generates project recommendations based on regional analysis with response caching.
 
         Args:
             region_temp (str): Region to generate recommendations for
             subcategory (str): Category/subcategory focus area
             regional_analysis (str): Text of the regional analysis
+            language (str, optional): Language code. Defaults to 'en'
 
         Returns:
             Tuple[str, str]: Tuple containing:
                 - Initial recommendations text
                 - Final project selections text
         """
+
+        # Check cache for project recommendations
+        cached_projects = cache_manager.get_cached_response(
+            region_temp, subcategory, 'projects', language
+        )
+        
+        if cached_projects:
+            # Display cached project recommendations
+            if isinstance(cached_projects, dict):
+                cached_content = cached_projects['content']
+            else:
+                cached_content = cached_projects
+            
+            # Split cached content back into initial and final recommendations
+            parts = cached_content.split("|||FINAL_PROJECTS|||")
+            if len(parts) == 2:
+                initial_recommendations = parts[0].strip()
+                final_project_selection = parts[1].strip()
+            else:
+                # If delimiter not found, use the full content for both parts
+                initial_recommendations = cached_content
+                final_project_selection = cached_content
+            
+            # We still need to handle background research even for cached projects
+            # CREATE CACHE KEY FOR REGIONAL SUMMARY
+            research_cache_key = f"regional_summary_{region_temp}_{subcategory}"
+            
+            # CHECK IF REGIONAL SUMMARY EXISTS IN CACHE
+            if research_cache_key not in st.session_state:
+                if language == 'en':
+                    st.subheader("Background Research")
+                    status_temp = f"Doing some background research on {region_temp}... This may take a moment."
+                else:
+                    st.subheader("Истраживање позадине")
+                    status_temp = f"Проводим нека истраживања о {region_temp}... Ово може потрајати неколико тренутака."
+                
+                # SYSTEM MESSAGE for research
+                research_system_message = """
+                    # Role
+                    You are a policy researcher and data scientist specializing in countries located in the Western Balkans. 
+                    
+                    # Instructions
+                    -   You will output only relevant responses 
+                    -   You will only search for and retain facts
+                    -   Provide accurate sources (if available) for your information"""
+
+                # FIRST AGENT - General Regional Summary
+                task_research = f"""
+                    # Task
+                    -   Provide a summary regarding the {region_temp} municipality of Serbia when it comes to {subcategory}, focusing on its assets, weaknesses, and most relevant challenges.
+                    -   Also look for basic information regarding the municipality such as its location, population, etc..,
+                    
+                    # Requirements
+                    - Summarize the results in ≤ 150 words.
+                    - Focus on factual, data-driven insights
+                    - Maintain consistent structure and terminology
+                    """
+                
+                with st.status(status_temp, expanded=True) as status:
+                    research_messages = [{"role": "system", "content": research_system_message}, 
+                                        {"role": "user", "content": task_research}]
+
+                    research_response = client.chat.completions.create(
+                        model="gpt-4o", 
+                        messages=research_messages, 
+                        temperature=0.1, 
+                        seed=42,
+                        max_tokens=200
+                    )
+                    # CACHE THE REGIONAL SUMMARY
+                    st.session_state[research_cache_key] = research_response.choices[0].message.content
+            
+            # GET REGIONAL SUMMARY FROM CACHE
+            regional_summary = st.session_state[research_cache_key]
+            
+            # DISPLAY REGIONAL SUMMARY
+            if language == 'en':
+                st.subheader("Background Research")
+                st.write(regional_summary)
+                
+                st.subheader("Initial Project Recommendations")
+                st.write(initial_recommendations)
+                
+                st.subheader("Final Project Selections")
+                st.write(final_project_selection)
+            else:
+                st.subheader("Истраживање позадине")
+                st.write(translate_en_to_sr(regional_summary))
+                
+                st.subheader("Прве препоруке за пројекте")
+                st.write(initial_recommendations)
+                
+                st.subheader("Коначни избор пројеката")
+                st.write(final_project_selection)
+            
+            return initial_recommendations, final_project_selection
+
+        # If Serbian is requested but no Serbian cache exists, check for English version for translation optimization
+        if language == 'sr' and not cached_projects:
+            english_projects = cache_manager.get_english_response(
+                region_temp, subcategory, 'projects'
+            )
+            if english_projects:
+                # Translate existing English response and cache the Serbian version
+                flag = f"Преводим препоруке пројеката за {subcategory} у региону {region_temp}..."
+                with st.status(flag, expanded=True) as status:
+                    translated_projects = translate_en_to_sr(english_projects)
+                    # Cache the translated response for future Serbian requests
+                    cache_manager.save_response(
+                        region_temp, subcategory, 'projects', 
+                        translated_projects, language
+                    )
+                    # Split translated content and display
+                    parts = translated_projects.split("|||FINAL_PROJECTS|||")
+                    if len(parts) == 2:
+                        initial_recommendations = parts[0].strip()
+                        final_project_selection = parts[1].strip()
+                    else:
+                        initial_recommendations = translated_projects
+                        final_project_selection = translated_projects
+                    
+                    # Handle background research for Serbian translation case
+                    research_cache_key = f"regional_summary_{region_temp}_{subcategory}"
+                    
+                    # CHECK IF REGIONAL SUMMARY EXISTS IN CACHE
+                    if research_cache_key not in st.session_state:
+                        st.subheader("Истраживање позадине")
+                        status_temp = f"Проводим нека истраживања о {region_temp}... Ово може потрајати неколико тренутака."
+                        
+                        # SYSTEM MESSAGE for research
+                        research_system_message = """
+                            # Role
+                            You are a policy researcher and data scientist specializing in countries located in the Western Balkans. 
+                            
+                            # Instructions
+                            -   You will output only relevant responses 
+                            -   You will only search for and retain facts
+                            -   Provide accurate sources (if available) for your information"""
+
+                        # FIRST AGENT - General Regional Summary
+                        task_research = f"""
+                            # Task
+                            -   Provide a summary regarding the {region_temp} municipality of Serbia when it comes to {subcategory}, focusing on its assets, weaknesses, and most relevant challenges.
+                            -   Also look for basic information regarding the municipality such as its location, population, etc..,
+                            
+                            # Requirements
+                            - Summarize the results in ≤ 150 words.
+                            - Focus on factual, data-driven insights
+                            - Maintain consistent structure and terminology
+                            """
+                        
+                        with st.status(status_temp, expanded=True) as status:
+                            research_messages = [{"role": "system", "content": research_system_message}, 
+                                                {"role": "user", "content": task_research}]
+
+                            research_response = client.chat.completions.create(
+                                model="gpt-4o", 
+                                messages=research_messages, 
+                                temperature=0.1, 
+                                seed=42,
+                                max_tokens=200
+                            )
+                            # CACHE THE REGIONAL SUMMARY
+                            st.session_state[research_cache_key] = research_response.choices[0].message.content
+                    
+                    # GET REGIONAL SUMMARY FROM CACHE AND DISPLAY
+                    regional_summary = st.session_state[research_cache_key]
+                    st.subheader("Истраживање позадине")
+                    st.write(translate_en_to_sr(regional_summary))
+                    
+                    # Display translated cached responses
+                    st.subheader("Прве препоруке за пројекте")
+                    st.write(initial_recommendations)
+                    
+                    st.subheader("Коначни избор пројеката")
+                    st.write(final_project_selection)
+                    
+                    return initial_recommendations, final_project_selection
 
         # CONSISTENT API PARAMETERS FOR ALL CALLS
         RESEARCH_TEMPERATURE = 0.1
@@ -790,17 +1308,45 @@ def run_analysis(
             # DISPLAY FINAL OUTPUT
             st.subheader("Final Project Selections")
             st.write(final_project_selection)
+            
+            # Cache the combined results for English
+            combined_content = f"{initial_recommendations}|||FINAL_PROJECTS|||{final_project_selection}"
+            cache_manager.save_response(
+                region_temp, subcategory, 'projects', 
+                combined_content, language
+            )
 
             # UPDATE STATUS
             status.update(label="Process Completed!", state="complete")
 
-        if language == 'sr':
+        elif language == 'sr':
+            # For Serbian, first cache the English version, then translate and cache Serbian
+            combined_english_content = f"{initial_recommendations}|||FINAL_PROJECTS|||{final_project_selection}"
+            cache_manager.save_response(
+                region_temp, subcategory, 'projects', 
+                combined_english_content, 'en'
+            )
+            
+            # Translate and display Serbian version
+            translated_initial = translate_en_to_sr(initial_recommendations)
+            translated_final = translate_en_to_sr(final_project_selection)
+            
             # DISPLAY FINAL OUTPUT
             st.subheader("Коначни избор пројеката")
-            st.write(translate_en_to_sr(final_project_selection))
+            st.write(translated_final)
+            
+            # Cache the Serbian version
+            combined_serbian_content = f"{translated_initial}|||FINAL_PROJECTS|||{translated_final}"
+            cache_manager.save_response(
+                region_temp, subcategory, 'projects', 
+                combined_serbian_content, language
+            )
 
             # UPDATE STATUS
             status.update(label="Process Completed!", state="complete")
+            
+            # Return translated versions for Serbian
+            return translated_initial, translated_final
 
         return initial_recommendations, final_project_selection
 
@@ -876,7 +1422,7 @@ def run_analysis(
             flag = "Које препоруке за пројекте следе?"
 
         if st.button(flag) and not st.session_state.project_recommendations_completed:
-            project_recommendations = project_recommendation_agent(st.session_state.option_region, st.session_state.option_category, st.session_state.regional_analysis_results)
+            project_recommendations = project_recommendation_agent(st.session_state.option_region, st.session_state.option_category, st.session_state.regional_analysis_results, language=language)
             st.session_state.project_recommendations_completed = True
             st.session_state.project_recommendations = project_recommendations
 

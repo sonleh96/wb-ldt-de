@@ -13,6 +13,24 @@ from PIL import Image
 
 from general_workflow import run_analysis
 
+### COUNTRY PUBLIC PROJECTS RESEARCH PLAN 
+# Sources: LangChain, LangFlow, Exa AI
+# 1. A separate module will research and compile public projects data for the selected country
+# 2. This module will be responsible for the following:
+#    User input → Planner (breaks down tasks)
+#       - Interpret input query—“compile public projects in X country across timeframes”—and break it into discrete subtasks 
+#    → Source Finder (parallel fetches)
+#       - For each subtask, fetch relevant sources via search, crawling, APIs, or government databases. 
+#       - Prioritize quality, domain specificity, and relevance.
+#       - Tool integration: Could include Google/Bing search, government APIs, or a focused crawler
+#    → Filter / Extractor 
+#       - Clean the retrieved raw data—filter out irrelevant hits, extract structured details like project title, budget, timeline, status, links, etc
+#       - Can be pre-defined functions
+#    → Summarizer
+#       - Collect and format citations, verify credibility, flag inconsistencies or missing info for revision loops
+#    → Citation Manager / Reviewer
+#    → Aggregator → final report
+#    ← (Optional) Feedback loop if coverage is incomplete
 
 # Access secrets directly, no need for json.loads()
 openai_api_key = os.getenv('openai_apikey')
@@ -285,7 +303,7 @@ if lang_code == "en":
 
     df_projects = read_csv_from_gcs(BUCKET_NAME, "decision_engine/inputs/wbif_project_examples.csv")
     df_project = df_projects.drop(['Estimated Completion', 'Beneficiary Body', 'Total Grant', 'Total Loan'], axis=1)
-    run_analysis(df_indicatorlist, df_indicators, averages_df, df_projects, regions, language=lang_code)
+    run_analysis(df_indicatorlist, df_indicators, averages_df, df_projects, regions, storage_client, language=lang_code)
 
 elif lang_code == "sr":
     app_title = "LDT мотор за одлучивање"
@@ -303,4 +321,4 @@ elif lang_code == "sr":
     df_projects = read_csv_from_gcs(BUCKET_NAME, "decision_engine/inputs/wbif_project_examples_serbian.csv", delimiter=';', on_bad_lines='warn')
     df_projects = df_projects.drop(['Процењени завршетак', 'Орган корисника', 'Тотал Грант (y €)', 'Тотал Лоан (y €)'], axis=1)
 
-    run_analysis(df_indicatorlist, df_indicators, averages_df, df_projects, regions_sr, language=lang_code)
+    run_analysis(df_indicatorlist, df_indicators, averages_df, df_projects, regions_sr, storage_client, language=lang_code)
