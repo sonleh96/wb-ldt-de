@@ -293,24 +293,6 @@ The cache management panel provides:
 - Ensure the wb-ldt bucket exists and is accessible
 - Monitor GCS quotas and billing
 
-## 🧪 Testing
-
-### Test Coverage
-The system includes comprehensive testing:
-- GCS client initialization
-- Cache save/retrieve operations
-- Bilingual caching functionality
-- Statistics generation
-- Different analysis types
-- Research caching with delimiter format
-- GCS cache structure validation
-- Cleanup operations
-
-### Running Tests
-```bash
-python test_cache_system.py
-```
-
 **Prerequisites:**
 - Google Cloud credentials file accessible
 - Proper GCS permissions for the wb-ldt bucket

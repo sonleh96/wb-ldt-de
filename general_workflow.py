@@ -1240,43 +1240,58 @@ def run_analysis(
         final_project_messages = [{"role": "system", "content": project_system_message},
                                   {"role": "user", "content": relevant_projects_q}]
         
-        final_response = client.chat.completions.create(
-            model="gpt-4o", 
-            messages=final_project_messages, 
-            temperature=FINAL_SELECTION_TEMPERATURE, 
-            seed=RANDOM_SEED
-        )
-        final_project_selection = final_response.choices[0].message.content
+        
 
         if language == 'en':
             # DISPLAY FINAL OUTPUT
             st.subheader("Final Project Selections")
+            with st.status("Matching with similar projects within the region... This may take a moment.", expanded=True) as status:
+                
+                final_response = client.chat.completions.create(
+                    model="gpt-4o", 
+                    messages=final_project_messages, 
+                    temperature=FINAL_SELECTION_TEMPERATURE, 
+                    seed=RANDOM_SEED
+                )
+                final_project_selection = final_response.choices[0].message.content
+
+                # Cache the combined results for English with research
+                combined_content = f"{regional_summary}|||INITIAL_RECOMMENDATIONS|||{initial_recommendations}|||FINAL_PROJECTS|||{final_project_selection}"
+                cache_manager.save_response(
+                    region_temp, subcategory, 'projects', 
+                    combined_content, language
+                )
+
             st.write(final_project_selection)
-            
-            # Cache the combined results for English with research
-            combined_content = f"{regional_summary}|||INITIAL_RECOMMENDATIONS|||{initial_recommendations}|||FINAL_PROJECTS|||{final_project_selection}"
-            cache_manager.save_response(
-                region_temp, subcategory, 'projects', 
-                combined_content, language
-            )
 
             # UPDATE STATUS
             status.update(label="Process Completed!", state="complete")
 
         elif language == 'sr':
-            # For Serbian, first cache the English version, then translate and cache Serbian
-            combined_english_content = f"{regional_summary}|||INITIAL_RECOMMENDATIONS|||{initial_recommendations}|||FINAL_PROJECTS|||{final_project_selection}"
-            cache_manager.save_response(
-                region_temp, subcategory, 'projects', 
-                combined_english_content, 'en'
-            )
-            
-            # Translate and display Serbian version
-            translated_initial = translate_en_to_sr(initial_recommendations)
-            translated_final = translate_en_to_sr(final_project_selection)
+            st.subheader("Коначни избор пројеката")
+
+            with st.status("Усклађивање са сличним пројектима у региону... Ово може потрајати неколико тренутака.", expanded=True) as status:
+                # For Serbian, first cache the English version, then translate and cache Serbian
+                final_response = client.chat.completions.create(
+                    model="gpt-4o", 
+                    messages=final_project_messages, 
+                    temperature=FINAL_SELECTION_TEMPERATURE, 
+                    seed=RANDOM_SEED
+                )
+                final_project_selection = final_response.choices[0].message.content
+                
+                combined_english_content = f"{regional_summary}|||INITIAL_RECOMMENDATIONS|||{initial_recommendations}|||FINAL_PROJECTS|||{final_project_selection}"
+                cache_manager.save_response(
+                    region_temp, subcategory, 'projects', 
+                    combined_english_content, 'en'
+                )
+                
+                # Translate and display Serbian version
+                translated_initial = translate_en_to_sr(initial_recommendations)
+                translated_final = translate_en_to_sr(final_project_selection)
             
             # DISPLAY FINAL OUTPUT
-            st.subheader("Коначни избор пројеката")
+            
             st.write(translated_final)
             
             # Cache the Serbian version (research was already translated and displayed earlier)
