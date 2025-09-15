@@ -5,6 +5,7 @@ from typing import List, Dict, Tuple, Optional, Any
 from datetime import datetime
 import hashlib
 from io import BytesIO
+import time
 
 from openai import OpenAI
 import pandas as pd
@@ -566,6 +567,15 @@ def run_analysis(
         )
         
         if cached_response:
+            # Add 2-second delay with status indicator for cached responses
+            if language == 'en':
+                flag = f"Starting analysis for {category_temp} in {region_temp}..."
+            else:  # Serbian
+                flag = f"Почиње анализа категорије {category_temp} у региону {region_temp}..."
+                
+            with st.status(flag, expanded=True) as status:
+                time.sleep(2)  # 2-second delay
+            
             # Return cached response content
             if isinstance(cached_response, dict):
                 return cached_response['content']
@@ -712,6 +722,15 @@ def run_analysis(
         )
         
         if cached_response:
+            # Add 2-second delay with status indicator for cached responses
+            if language == 'en':
+                flag = f"Conducting regional analysis..."
+            else:  # Serbian
+                flag = f"Извођење регионалне анализе..."
+                
+            with st.status(flag, expanded=True) as status:
+                time.sleep(2)  # 2-second delay
+
             if isinstance(cached_response, dict):
                 return cached_response['content']
             return cached_response
@@ -878,6 +897,15 @@ def run_analysis(
         )
         
         if cached_projects:
+            # Add 2-second delay with status indicator for cached responses
+            if language == 'en':
+                flag = f"Doing some background research on {region_temp}... This may take a moment."
+            else:  # Serbian
+                flag = f"Проводим нека истраживања о {region_temp}... Ово може потрајати неколико тренутака."
+                
+            with st.status(flag, expanded=True) as status:
+                time.sleep(2)  # 2-second delay
+
             # Display cached project recommendations
             if isinstance(cached_projects, dict):
                 cached_content = cached_projects['content']
@@ -927,17 +955,35 @@ def run_analysis(
                     st.subheader("Истраживање позадине")
                     st.write(research_content)
             
-            # Display project recommendations
+            # Display Initial Project Recommendations with delay
+            if language == 'en':
+                flag = f"Generating project recommendations... This may take a moment."
+            else:
+                flag = f"Генерисање препорука пројеката... Ово може потрајати неколико тренутака."
+            
+            with st.status(flag, expanded=True) as status:
+                time.sleep(2)  # 2-second delay
+            
             if language == 'en':
                 st.subheader("Initial Project Recommendations")
                 st.write(initial_recommendations)
-                
-                st.subheader("Final Project Selections")
-                st.write(final_project_selection)
             else:
                 st.subheader("Прве препоруке за пројекте")
                 st.write(initial_recommendations)
-                
+            
+            # Display Final Project Selections with delay
+            if language == 'en':
+                flag = f"Finalizing project selections..."
+            else:
+                flag = f"Финализовање избора пројеката..."
+            
+            with st.status(flag, expanded=True) as status:
+                time.sleep(2)  # 2-second delay
+            
+            if language == 'en':
+                st.subheader("Final Project Selections")
+                st.write(final_project_selection)
+            else:
                 st.subheader("Коначни избор пројеката")
                 st.write(final_project_selection)
             
