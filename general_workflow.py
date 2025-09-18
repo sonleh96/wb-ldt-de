@@ -388,7 +388,7 @@ def run_analysis(
         """
         Translates English text to Serbian with caching for better performance.
         
-        This function uses GPT-4o-mini to perform high-quality translations while
+        This function uses GPT-4.1-mini to perform high-quality translations while
         preserving Markdown formatting and following specific translation rules
         for public sector terminology.
         
@@ -449,7 +449,7 @@ def run_analysis(
         ]
 
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4.1-nano",
             messages=messages,
             temperature=0.1,  # Even lower temperature for maximum consistency
             seed=42  # Fixed seed for deterministic translations
@@ -673,7 +673,7 @@ def run_analysis(
             ]
 
             response = client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-4.1-mini",
                 messages=messages,
                 temperature=0.3,
                 seed=42
@@ -829,7 +829,7 @@ def run_analysis(
                 {"role": "user",   "content": extract_prompt}
             ]
             response = client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4.1",
                 messages=messages,
                 tools=TOOLS,
                 tool_choice="auto",
@@ -889,7 +889,7 @@ def run_analysis(
                 {"role": "user",   "content": narrative_prompt}
             ]
             narrative_response = client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4.1",
                 messages=messages,
                 temperature=0
             )
@@ -1153,7 +1153,7 @@ def run_analysis(
                                 {"role": "user", "content": task_research}]
 
             research_response = client.chat.completions.create(
-                model="gpt-4o", 
+                model="gpt-4.1", 
                 messages=research_messages, 
                 temperature=RESEARCH_TEMPERATURE, 
                 seed=RANDOM_SEED,
@@ -1248,7 +1248,7 @@ def run_analysis(
 
             # SHOW INTERMEDIATE RESPONSE (Processing Message)
             with st.status("Generating project recommendations... This may take a moment.", expanded=True) as status:
-                initial_response = client.chat.completions.create(model="gpt-4o", messages=project_messages, temperature=RECOMMENDATION_TEMPERATURE, seed=42)
+                initial_response = client.chat.completions.create(model="gpt-4.1", messages=project_messages, temperature=RECOMMENDATION_TEMPERATURE, seed=42)
                 initial_recommendations = initial_response.choices[0].message.content
 
                 # FILTER RELEVANT PROJECTS
@@ -1271,7 +1271,7 @@ def run_analysis(
 
             # SHOW INTERMEDIATE RESPONSE (Processing Message)
             with st.status("Генерисање препорука пројеката... Ово може потрајати неколико тренутака.", expanded=True) as status:
-                initial_response = client.chat.completions.create(model="gpt-4o", messages=project_messages, temperature=RECOMMENDATION_TEMPERATURE, seed=42)
+                initial_response = client.chat.completions.create(model="gpt-4.1", messages=project_messages, temperature=RECOMMENDATION_TEMPERATURE, seed=42)
                 initial_recommendations = initial_response.choices[0].message.content
 
                 # FILTER RELEVANT PROJECTS
@@ -1357,7 +1357,7 @@ def run_analysis(
             with st.status("Matching with similar projects within the region... This may take a moment.", expanded=True) as status:
                 
                 final_response = client.chat.completions.create(
-                    model="gpt-4o", 
+                    model="gpt-4.1", 
                     messages=final_project_messages, 
                     temperature=FINAL_SELECTION_TEMPERATURE, 
                     seed=RANDOM_SEED
@@ -1382,7 +1382,7 @@ def run_analysis(
             with st.status("Усклађивање са сличним пројектима у региону... Ово може потрајати неколико тренутака.", expanded=True) as status:
                 # For Serbian, first cache the English version, then translate and cache Serbian
                 final_response = client.chat.completions.create(
-                    model="gpt-4o", 
+                    model="gpt-4.1", 
                     messages=final_project_messages, 
                     temperature=FINAL_SELECTION_TEMPERATURE, 
                     seed=RANDOM_SEED
