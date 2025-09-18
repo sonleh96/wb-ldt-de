@@ -870,14 +870,14 @@ def run_analysis(
             -   The outputs must strictly follow what is set in the following **# Example** with no deviations.
 
             # Example
-            1. Key Structure Average Broadband Download Speed (as a **mini-header (bold)**)\n
+            **1. Key Structure Average Broadband Download Speed **\n
             2021: 33.67 megabits per second - Bor | 37.79 megabits per second - National Average\n2022: 26.43 megabits per second - Bor | 42.19 megabits per second - National Average\n2023: 43.90 megabits per second - Bor | 54.94 megabits per second - National Average\n2024: 44.63 megabits per second - Bor | 65.87 megabits per second - National Average\n\n
-            **Interpretation**\n
+            *Interpretation*\n
             Bor's broadband speeds for key structures ...
 
-            2. Average Cellular Download Speed (as a **mini-header (bold)**)\n
+            **2. Average Cellular Download Speed **\n
             2021: 33.67 megabits per second - Bor | 37.79 megabits per second - National Average\n2022: 26.43 megabits per second - Bor | 42.19 megabits per second - National Average\n2023: 43.90 megabits per second - Bor | 54.94 megabits per second - National Average\n2024: 44.63 megabits per second - Bor | 65.87 megabits per second - National Average\n\n
-            **Interpretation**\n
+            *Interpretation:*\n
             Bor shows an improving trend in cellular download speeds ...
             
             ### Overall Summary
@@ -1210,11 +1210,11 @@ def run_analysis(
 
             # Format (Follow Exactly)
             Based on the regional analysis data for {cache_manager.region_sr_to_en[region_temp] if language == 'sr' else region_temp}, here are the 5 most viable public investment projects ranked by implementation feasibility:
-
+            
             **1. [Specific Project Name]**
-            Project Description: [50-75 words describing the project scope and components]
-            Data-Based Justification: [Reference specific indicators/findings from Regional Analysis that support this project - 75-100 words]
-            Implementation Actions:
+            \n*Project Description:* [50-75 words describing the project scope and components]
+            \n*Data-Based Justification:* [Reference specific indicators/findings from Regional Analysis that support this project - 75-100 words]
+            \n*Implementation Actions:*
                 1. [Specific municipal-level action]
                 2. [Specific policy or regulatory action]
                 3. [Specific partnership or funding action]
@@ -1254,7 +1254,7 @@ def run_analysis(
                 # FILTER RELEVANT PROJECTS
                 df_projects_temp = df_projects[df_projects['Investment Sector'].str.contains(subcategory, case=False, na=False)]
                 if option_category == 'Environment':
-                    df_projects_temp = df_projects_temp[df_projects_temp['Project Description'].str.contains("air | air pollution | emissions | co2 | CO2")]
+                    df_projects_temp = df_projects_temp[df_projects_temp['Project Description'].str.contains("air | air pollution | emissions | co2 | CO2", na=False)]
                 
                 if option_category == 'Sustainable Transport':
                     df_projects_temp = df_projects_temp[df_projects_temp['Status'] != 'Preparation']
@@ -1279,7 +1279,7 @@ def run_analysis(
                 df_projects_temp = df_projects[df_projects['Investment Sector'].str.contains(subcategory, case=False, na=False)]
                 if option_category == 'Животна средина':
                     # df_projects_temp = df_projects_temp[df_projects_temp['Опис пројекта'].str.contains("ваздух | загађење ваздуха | емисије | cO2 | CO2")]
-                    df_projects_temp = df_projects_temp[df_projects_temp['Project Description'].str.contains("air | air pollution | emissions | co2 | CO2")]
+                    df_projects_temp = df_projects_temp[df_projects_temp['Project Description'].str.contains("air | air pollution | emissions | co2 | CO2", na=False)]
                 if option_category == 'Одрживи транспорт':
                     #  df_projects_temp = df_projects_temp[df_projects_temp['Статус'] != 'Припрема']
                     df_projects_temp = df_projects_temp[df_projects_temp['Status'] != 'Preparation']
@@ -1306,17 +1306,17 @@ def run_analysis(
 
         # Format (Follow Exactly)
         Here are the projects that align closely with the recommendations for {cache_manager.region_sr_to_en[region_temp] if language == 'sr' else region_temp}, focusing particularly on {cache_manager.category_sr_to_en[subcategory] if language == 'sr' else subcategory}:
-
+    
         1. **[Project Title]**
-            - Project Description: [approximately 50 words]
-            - Location: [specific location]
-            - Beneficiaries: [target beneficiaries]
-            - Lead IFI: [Full Institution Name (ABBREVIATION)]
-            - Sector: {cache_manager.category_sr_to_en[subcategory] if language == 'sr' else subcategory}
-            - Type: [project type]
-            - Total Financing: [amount]
-            - Project Benefits: [key benefits]
-            - URL: [project URL]
+            - *Project Description:* [approximately 50 words]
+            - *Location:* [specific location]
+            - *Beneficiaries:* [target beneficiaries]
+            - *Lead IFI:* [Full Institution Name (ABBREVIATION)]
+            - *Sector:* {cache_manager.category_sr_to_en[subcategory] if language == 'sr' else subcategory}
+            - *Type:* [project type]
+            - *Total Financing:* [amount]
+            - *Project Benefits:* [key benefits]
+            - *URL:* [project URL (example: https://www.wbif.eu/project-detail/PRJ-ALB-DII...)]
 
         2. **[Project Title]**
             [Same format as above]
