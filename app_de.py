@@ -41,8 +41,8 @@ openai_api_key = os.getenv('openai_apikey')
 
 # credentials = service_account.Credentials.from_service_account_info(creds_info)
 credentials = service_account.Credentials.from_service_account_file(
-    r"D:\Work\WB\LDT\credentials\wb-ldt-948953b71056.json"
-    # "/Users/sonle/Documents/work/WB/LDT_DecisionEngine/credentials/wb-ldt-948953b71056.json"
+    # r"D:\Work\WB\LDT\credentials\wb-ldt-948953b71056.json"
+    "/Users/sonle/Documents/work/WB/LDT_DecisionEngine/credentials/wb-ldt-948953b71056.json"
 )
 storage_client = storage.Client(credentials=credentials)
 
@@ -305,6 +305,9 @@ lang_code = languages[sel_lang]
 # Convert and embed the image
 icon_html = f'<img src="data:image/png;base64,{get_base64_from_image(im)}" width="30" style="vertical-align: middle; margin-right: 10px;">'
 
+df_projects = read_csv_from_gcs(BUCKET_NAME, "decision_engine/inputs/wbif_project_examples_v2.csv", sep=";")
+df_projects = df_projects.drop(['Estimated Completion', 'Beneficiary Body', 'Total Grant', 'Total Loan'], axis=1)
+
 # Define header and subheader based on language
 if lang_code == "en":
     app_title = "LDT Decision Engine"
@@ -320,8 +323,8 @@ if lang_code == "en":
     if "option_category" not in st.session_state:
         st.session_state.option_category = "Education"
 
-    df_projects = read_csv_from_gcs(BUCKET_NAME, "decision_engine/inputs/wbif_project_examples.csv")
-    df_project = df_projects.drop(['Estimated Completion', 'Beneficiary Body', 'Total Grant', 'Total Loan'], axis=1)
+    # df_projects = read_csv_from_gcs(BUCKET_NAME, "decision_engine/inputs/wbif_project_examples.csv")
+    # df_project = df_projects.drop(['Estimated Completion', 'Beneficiary Body', 'Total Grant', 'Total Loan'], axis=1)
     run_analysis(df_indicatorlist, df_indicators, averages_df, df_projects, regions, storage_client, language=lang_code)
 
 elif lang_code == "sr":
@@ -337,7 +340,7 @@ elif lang_code == "sr":
     if "option_category" not in st.session_state:
         st.session_state.option_category = "Образовање"
 
-    df_projects = read_csv_from_gcs(BUCKET_NAME, "decision_engine/inputs/wbif_project_examples_serbian.csv", delimiter=';', on_bad_lines='warn')
-    df_projects = df_projects.drop(['Процењени завршетак', 'Орган корисника', 'Тотал Грант (y €)', 'Тотал Лоан (y €)'], axis=1)
+    # df_projects = read_csv_from_gcs(BUCKET_NAME, "decision_engine/inputs/wbif_project_examples_serbian.csv", delimiter=';', on_bad_lines='warn')
+    # df_projects = df_projects.drop(['Процењени завршетак', 'Орган корисника', 'Тотал Грант (y €)', 'Тотал Лоан (y €)'], axis=1)
 
     run_analysis(df_indicatorlist, df_indicators, averages_df, df_projects, regions_sr, storage_client, language=lang_code)

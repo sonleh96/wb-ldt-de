@@ -1116,7 +1116,7 @@ def run_analysis(
         # FIRST AGENT - General Regional Summary
         task_research = f"""
             # Task
-            -   Provide a summary regarding the {region_temp} municipality of Serbia when it comes to {subcategory}, focusing on its assets, weaknesses, and most relevant challenges.
+            -   Provide a summary regarding the {cache_manager.region_sr_to_en[region_temp] if language == 'sr' else region_temp} municipality of Serbia when it comes to {cache_manager.category_sr_to_en[subcategory] if language == 'sr' else subcategory}, focusing on its assets, weaknesses, and most relevant challenges.
             -   Also look for basic information regarding the municipality such as its location, population, etc..,
             
             
@@ -1160,7 +1160,7 @@ def run_analysis(
             You are a governance specialist with deep expertise in both national and sub-national public policy for countries located in the Western Balkans.
 
             # Instructions 
-            -   Your task is to generate project recommendations for the {region_temp} municipality in terms of {subcategory}. 
+            -   Your task is to generate project recommendations for the {cache_manager.region_sr_to_en[region_temp] if language == 'sr' else region_temp} municipality in terms of {cache_manager.category_sr_to_en[subcategory] if language == 'sr' else subcategory}. 
             -   However, these recommendations must be **strictly based on** 
                     - the regional analysis 
                     - regional summary 
@@ -1184,7 +1184,7 @@ def run_analysis(
             1. Addresses critical gaps identified in the regional data
             2. Builds on existing regional strengths/assets  
             3. Feasible given typical municipal budgets and capabilities
-            4. Aligns with {subcategory} sector priorities
+            4. Aligns with {cache_manager.category_sr_to_en[subcategory] if language == 'sr' else subcategory} sector priorities
             5. Has measurable impact potential
 
             # Requirements
@@ -1195,7 +1195,7 @@ def run_analysis(
             -   Maintain consistent terminology and structure
 
             # Format (Follow Exactly)
-            Based on the regional analysis data for {region_temp}, here are the 5 most viable public investment projects ranked by implementation feasibility:
+            Based on the regional analysis data for {cache_manager.region_sr_to_en[region_temp] if language == 'sr' else region_temp}, here are the 5 most viable public investment projects ranked by implementation feasibility:
 
             **1. [Specific Project Name]**
             Project Description: [50-75 words describing the project scope and components]
@@ -1261,11 +1261,14 @@ def run_analysis(
                 initial_recommendations = initial_response.choices[0].message.content
 
                 # FILTER RELEVANT PROJECTS
-                df_projects_temp = df_projects[df_projects['Земља корисница'].str.contains(subcategory, case=False, na=False)]
+                # df_projects_temp = df_projects[df_projects['Земља корисница'].str.contains(subcategory, case=False, na=False)]
+                df_projects_temp = df_projects[df_projects['Investment Sector'].str.contains(subcategory, case=False, na=False)]
                 if option_category == 'Животна средина':
-                    df_projects_temp = df_projects_temp[df_projects_temp['Опис пројекта'].str.contains("ваздух | загађење ваздуха | емисије | cO2 | CO2")]
+                    # df_projects_temp = df_projects_temp[df_projects_temp['Опис пројекта'].str.contains("ваздух | загађење ваздуха | емисије | cO2 | CO2")]
+                    df_projects_temp = df_projects_temp[df_projects_temp['Project Description'].str.contains("air | air pollution | emissions | co2 | CO2")]
                 if option_category == 'Одрживи транспорт':
-                     df_projects_temp = df_projects_temp[df_projects_temp['Статус'] != 'Припрема']
+                    #  df_projects_temp = df_projects_temp[df_projects_temp['Статус'] != 'Припрема']
+                    df_projects_temp = df_projects_temp[df_projects_temp['Status'] != 'Preparation']
 
                 json_projects = df_projects_temp.to_json(orient="records")
 
@@ -1279,7 +1282,7 @@ def run_analysis(
         -   Present exactly 5 projects with complete information including project description, location, expected beneficiaries, lead IFI, cost, and URL
 
         # Requirements
-        -   Projects should be selected based on relevance to {subcategory} and alignment with the **# Additional Context** recommendations
+        -   Projects should be selected based on relevance to {cache_manager.category_sr_to_en[subcategory] if language == 'sr' else subcategory} and alignment with the **# Additional Context** recommendations
         -   The chosen projects serve as examples for policy makers to learn from
         -   If projects are not thematically relevant to the recommendations, select projects from the same industry/theme
         -   Always output exactly 5 projects unless fewer than 5 relevant projects exist
@@ -1288,14 +1291,14 @@ def run_analysis(
         -   Maintain consistent terminology and project numbering
 
         # Format (Follow Exactly)
-        Here are the projects that align closely with the recommendations for {region_temp}, focusing particularly on {subcategory}:
+        Here are the projects that align closely with the recommendations for {cache_manager.region_sr_to_en[region_temp] if language == 'sr' else region_temp}, focusing particularly on {cache_manager.category_sr_to_en[subcategory] if language == 'sr' else subcategory}:
 
         1. **[Project Title]**
             - Project Description: [approximately 50 words]
             - Location: [specific location]
             - Beneficiaries: [target beneficiaries]
             - Lead IFI: [Full Institution Name (ABBREVIATION)]
-            - Sector: {subcategory}
+            - Sector: {cache_manager.category_sr_to_en[subcategory] if language == 'sr' else subcategory}
             - Type: [project type]
             - Total Financing: [amount]
             - Project Benefits: [key benefits]
