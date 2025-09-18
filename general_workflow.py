@@ -16,26 +16,6 @@ from google.oauth2 import service_account
 os.environ["OPENAI_API_KEY"] = os.getenv('openai_apikey')
 
 
-### RESPONSE CACHING IMPROVEMENT PLAN
-# 1. Everytime the user runs a new combination of region and subcategory, the analysis will use the LLMs to generate responses
-# 2. The responses will be stored in a database to serve as response cache, saved as a JSON
-# 2a. This is done for both English and Serbian, where the first Serbian unique response will also be saved in the response cache as the translation of the saved English response
-# 3. The response cache will be loaded to serve as a response cache for the same combination of region and subcategory
-# 4. This is to ensure that the same response is not generated multiple times for the same combination of region and subcategory across different instances of the app
-# 5. Users are guaranteed to see the same response for the same combination of region and subcategory across different instances of the app. This is a direct fix for the ongoing issues of using LLMs to generate responses
-# 6. The response cache is only updated with a new region and subcategory combination, or when the admin of this repo makes changes to the prompts or functions
-
-
-### How it works
-# 1. The user selects a region and a subcategory
-# 2. The app will check the response cache for the combination of region and subcategory
-# 3. If the response is found in the cache, the app will load and display the response
-# 4. If the response is not found in the cache, the app will generate a new response
-# 5. The new response will be saved in the response cache. The English and Serbian responses will be saved separately
-# 6. The Serbian response will load the existing English response from the cache, it it exists, and translate it to Serbian. 
-# Otherwise, generating a new Serbian response will also save the pre-requisite English response in the cache
-
-
 class ResponseCacheManager:
     """
     Manages caching of LLM responses using Google Cloud Storage for consistent outputs across app instances.
