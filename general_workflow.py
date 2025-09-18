@@ -46,7 +46,7 @@ class ResponseCacheManager:
     """
     
     def __init__(self, storage_client: storage.Client, bucket_name: str = "wb-ldt", 
-                 cache_path: str = "decision_engine/cached_responses"):
+                 cache_path: str = "decision_engine/cached_responses", df_indicators: pd.DataFrame = None):
         """
         Initialize the cache manager with GCS client.
         
@@ -61,6 +61,24 @@ class ResponseCacheManager:
         self.cache_version = "1.0"  # Increment when prompts/functions change
         self.bucket = self.storage_client.bucket(bucket_name)
         self.cache_file_path = f"{cache_path}/response_cache.json"
+        
+        # Category mappings for cache key normalization
+        self.category_options_en = ["Education", "Energy Access", "Environment", "Digitalization", "Health", "Sustainable Transport"]
+        self.category_options_sr = ["Образовање", "Приступ енергији", "Животна средина", "Дигитализација", "Здравље", "Одрживи транспорт"]
+        self.category_sr_to_en = dict(zip(self.category_options_sr, self.category_options_en))
+        self.category_en_to_sr = dict(zip(self.category_options_en, self.category_options_sr))
+        
+        # Region mappings for cache key normalization
+        self.df_indicators = df_indicators
+        if df_indicators is not None:
+            # Create mappings from Serbian to English region names
+            region_mapping = df_indicators[['ENGLISH_NAME', 'SERBIAN_NAME_CYRILLIC']].drop_duplicates()
+            self.region_sr_to_en = dict(zip(region_mapping['SERBIAN_NAME_CYRILLIC'], region_mapping['ENGLISH_NAME']))
+            self.region_en_to_sr = dict(zip(region_mapping['ENGLISH_NAME'], region_mapping['SERBIAN_NAME_CYRILLIC']))
+        else:
+            self.region_sr_to_en = {}
+            self.region_en_to_sr = {}
+        
         self.cache = self._load_cache()
     
     def _load_cache(self) -> Dict[str, Any]:
@@ -101,21 +119,68 @@ class ResponseCacheManager:
         except Exception as e:
             st.error(f"Failed to save cache to GCS: {e}")
     
+    def _normalize_region_name(self, region: str) -> str:
+        """
+        Normalize region name to English for consistent cache keys.
+        
+        Args:
+            region (str): Region name in either English or Serbian
+            
+        Returns:
+            str: English region name
+        """
+        # If it's already in English, return as is
+        if region in self.region_en_to_sr:
+            return region
+        
+        # If it's in Serbian, convert to English
+        if region in self.region_sr_to_en:
+            return self.region_sr_to_en[region]
+        
+        # If not found in mappings, return as is (fallback)
+        return region
+    
+    def _normalize_category_name(self, category: str) -> str:
+        """
+        Normalize category name to English for consistent cache keys.
+        
+        Args:
+            category (str): Category name in either English or Serbian
+            
+        Returns:
+            str: English category name
+        """
+        # If it's already in English, return as is
+        if category in self.category_options_en:
+            return category
+        
+        # If it's in Serbian, convert to English
+        if category in self.category_sr_to_en:
+            return self.category_sr_to_en[category]
+        
+        # If not found in mappings, return as is (fallback)
+        return category
+    
     def _generate_cache_key(self, region: str, subcategory: str, analysis_type: str, language: str = 'en') -> str:
         """
         Generate a unique cache key for a specific analysis request.
+        Always uses English names for region and subcategory to ensure consistency.
         
         Args:
-            region (str): Region name
-            subcategory (str): Subcategory name  
+            region (str): Region name (in any language)
+            subcategory (str): Subcategory name (in any language)
             analysis_type (str): Type of analysis ('indicators', 'regional', 'projects')
             language (str): Language code ('en' or 'sr')
             
         Returns:
-            str: Unique cache key
+            str: Unique cache key using English names
         """
-        # Normalize inputs to ensure consistent keys
-        normalized_key = f"{region.strip()}_{subcategory.strip()}_{analysis_type}_{language}"
+        # Normalize region and subcategory to English for consistent cache keys
+        normalized_region = self._normalize_region_name(region.strip())
+        normalized_subcategory = self._normalize_category_name(subcategory.strip())
+        
+        # Generate cache key using English names
+        normalized_key = f"{normalized_region}_{normalized_subcategory}_{analysis_type}_{language}"
         return normalized_key.lower().replace(' ', '_')
     
     def get_cached_response(self, region: str, subcategory: str, analysis_type: str, language: str = 'en') -> Optional[Dict[str, Any]]:
@@ -284,8 +349,8 @@ def run_analysis(
         None: This function updates the Streamlit interface directly
     """
     
-    # Initialize the response cache manager with GCS client
-    cache_manager = ResponseCacheManager(storage_client)
+    # Initialize the response cache manager with GCS client and region mappings
+    cache_manager = ResponseCacheManager(storage_client, df_indicators=df_indicators)
     
     # Show cache admin panel in sidebar (for developers/admins)
     cache_manager.show_cache_admin_panel()
