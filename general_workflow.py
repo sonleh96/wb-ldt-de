@@ -14,6 +14,7 @@ from google.cloud import storage
 from google.oauth2 import service_account
 
 os.environ["OPENAI_API_KEY"] = os.getenv('openai_apikey')
+sleep_t = 0
 
 
 class ResponseCacheManager:
@@ -619,7 +620,7 @@ def run_analysis(
                 flag = f"Почиње анализа категорије {category_temp} у региону {region_temp}..."
                 
             with st.status(flag, expanded=True) as status:
-                time.sleep(2)  # 2-second delay
+                time.sleep(sleep_t)  # 2-second delay
             
             # Return cached response content
             if isinstance(cached_response, dict):
@@ -774,7 +775,7 @@ def run_analysis(
                 flag = f"Извођење регионалне анализе..."
                 
             with st.status(flag, expanded=True) as status:
-                time.sleep(2)  # 2-second delay
+                time.sleep(sleep_t)  # 2-second delay
 
             if isinstance(cached_response, dict):
                 return cached_response['content']
@@ -949,7 +950,7 @@ def run_analysis(
                 flag = f"Проводим нека истраживања о {region_temp}... Ово може потрајати неколико тренутака."
                 
             with st.status(flag, expanded=True) as status:
-                time.sleep(2)  # 2-second delay
+                time.sleep(sleep_t)  # 2-second delay
 
             # Display cached project recommendations
             if isinstance(cached_projects, dict):
@@ -1007,7 +1008,7 @@ def run_analysis(
                 flag = f"Генерисање препорука пројеката... Ово може потрајати неколико тренутака."
             
             with st.status(flag, expanded=True) as status:
-                time.sleep(2)  # 2-second delay
+                time.sleep(sleep_t)  # 2-second delay
             
             if language == 'en':
                 st.subheader("Initial Project Recommendations")
@@ -1023,7 +1024,7 @@ def run_analysis(
                 flag = f"Финализовање избора пројеката..."
             
             with st.status(flag, expanded=True) as status:
-                time.sleep(2)  # 2-second delay
+                time.sleep(sleep_t)  # 2-second delay
             
             if language == 'en':
                 st.subheader("Final Project Selections")
