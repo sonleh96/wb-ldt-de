@@ -110,16 +110,29 @@ class ResponseCacheManager:
         Returns:
             str: English region name
         """
+        if not region or not isinstance(region, str):
+            st.warning(f"Invalid region name: {region}")
+            return "Unknown Region"
+            
+        region_clean = region.strip()
+        
         # If it's already in English, return as is
-        if region in self.region_en_to_sr:
-            return region
+        if region_clean in self.region_en_to_sr:
+            return region_clean
         
         # If it's in Serbian, convert to English
-        if region in self.region_sr_to_en:
-            return self.region_sr_to_en[region]
+        if region_clean in self.region_sr_to_en:
+            return self.region_sr_to_en[region_clean]
         
-        # If not found in mappings, return as is (fallback)
-        return region
+        # If not found in mappings, log warning and return original
+        # This prevents Serbian names from being used in English prompts
+        if region_clean:
+            st.warning(f"Region '{region_clean}' not found in region mappings. This may cause Serbian names in English responses.")
+            # Try to find a close match or provide a safe fallback
+            available_regions = list(self.region_en_to_sr.keys()) + list(self.region_sr_to_en.keys())
+            st.info(f"Available regions: {', '.join(available_regions[:5])}...")
+        
+        return region_clean
     
     def _normalize_category_name(self, category: str) -> str:
         """
@@ -131,16 +144,27 @@ class ResponseCacheManager:
         Returns:
             str: English category name
         """
+        if not category or not isinstance(category, str):
+            st.warning(f"Invalid category name: {category}")
+            return "Unknown Category"
+            
+        category_clean = category.strip()
+        
         # If it's already in English, return as is
-        if category in self.category_options_en:
-            return category
+        if category_clean in self.category_options_en:
+            return category_clean
         
         # If it's in Serbian, convert to English
-        if category in self.category_sr_to_en:
-            return self.category_sr_to_en[category]
+        if category_clean in self.category_sr_to_en:
+            return self.category_sr_to_en[category_clean]
         
-        # If not found in mappings, return as is (fallback)
-        return category
+        # If not found in mappings, log warning and return original
+        # This prevents Serbian names from being used in English prompts
+        if category_clean:
+            st.warning(f"Category '{category_clean}' not found in category mappings. This may cause Serbian names in English responses.")
+            st.info(f"Available categories: {', '.join(self.category_options_en)}")
+        
+        return category_clean
     
     def _generate_cache_key(self, region: str, subcategory: str, analysis_type: str, language: str = 'en') -> str:
         """
@@ -159,6 +183,14 @@ class ResponseCacheManager:
         # Normalize region and subcategory to English for consistent cache keys
         normalized_region = self._normalize_region_name(region.strip())
         normalized_subcategory = self._normalize_category_name(subcategory.strip())
+        
+        # Validation: Check if we accidentally have Serbian names in English cache keys
+        if language == 'en':
+            # For English responses, ensure we're using English names
+            if normalized_region in self.region_sr_to_en.keys():
+                st.error(f"Cache key generation error: Serbian region name '{normalized_region}' found in English response generation")
+            if normalized_subcategory in self.category_sr_to_en.keys():
+                st.error(f"Cache key generation error: Serbian category name '{normalized_subcategory}' found in English response generation")
         
         # Generate cache key using English names
         normalized_key = f"{normalized_region}_{normalized_subcategory}_{analysis_type}_{language}"
@@ -359,8 +391,10 @@ def run_analysis(
         """
         if language == 'en':
             lang_col = "ENGLISH_NAME"
-        if language == 'sr':
+        elif language == 'sr':
             lang_col = 'SERBIAN_NAME_CYRILLIC'
+        else:
+            lang_col = "ENGLISH_NAME"  # Default fallback
 
         valid_columns = [col for col in relevant_columns if col in df.columns]
         return df.loc[df[lang_col] == region, valid_columns]
@@ -541,7 +575,7 @@ def run_analysis(
         region_index = regions.index("Veliko Gradište") if "Veliko Gradište" in regions else 0
 
         # Use selectbox to manage session state (Streamlit will handle option_region automatically)
-        option_region = st.selectbox(
+        st.selectbox(
             "Select a Region:", 
             regions, 
             index=region_index,  # Uses computed index
@@ -569,7 +603,7 @@ def run_analysis(
         region_index = regions.index("Велико Градиште") if "Велико Градиште" in regions else 0
 
         # Use selectbox to manage session state (Streamlit will handle option_region automatically)
-        option_region = st.selectbox(
+        st.selectbox(
             "Изаберите регион:", 
             regions, 
             index=region_index,  # Uses computed index
@@ -606,6 +640,13 @@ def run_analysis(
         Returns:
             str: Formatted analysis text with relevant indicators
         """
+        
+        # NORMALIZE INPUTS TO ENGLISH FOR CONSISTENT ENGLISH RESPONSE GENERATION
+        # Always use English names when generating English responses, regardless of current language mode
+        english_category = cache_manager._normalize_category_name(category_temp)
+        
+        # Use normalized English names for all prompts to prevent Serbian names in English responses
+        prompt_category = english_category
         
         # Check cache first
         cached_response = cache_manager.get_cached_response(
@@ -662,7 +703,7 @@ def run_analysis(
                 # Requirements:
                 -   Mention the full name of the indicator from 'indicator_name_full' in **bold**, followed by ':' and its full description in regular text from 'indicator_descrption'.
                 -   Ensure the indicators are logically relevant to the category based on the provided information.
-                -   Outline the indicators in order of most relevant to {category_temp}
+                -   Outline the indicators in order of most relevant to {prompt_category}
                 
                 # Additional Context:
                 This is the dataframe: {json_columns}"""
@@ -724,8 +765,10 @@ def run_analysis(
         """
         if language == 'en':
             col = "ENGLISH_NAME"
-        if language == 'sr':
+        elif language == 'sr':
             col = "SERBIAN_NAME_CYRILLIC"
+        else:
+            col = "ENGLISH_NAME"  # Default fallback
 
         lines = []
 
@@ -761,6 +804,15 @@ def run_analysis(
         Returns:
             str: Comprehensive regional analysis text
         """
+        
+        # NORMALIZE INPUTS TO ENGLISH FOR CONSISTENT ENGLISH RESPONSE GENERATION
+        # Always use English names when generating English responses, regardless of current language mode
+        english_region = cache_manager._normalize_region_name(region_name)
+        english_category = cache_manager._normalize_category_name(category_temp)
+        
+        # Use normalized English names for all prompts to prevent Serbian names in English responses
+        prompt_region = english_region
+        prompt_category = english_category
         
         # Check cache first
         cached_response = cache_manager.get_cached_response(
@@ -812,7 +864,7 @@ def run_analysis(
             extract_prompt = f"""
             # Task
             From the text below, return JSON with keys:
-            • region          (string, should equal "{region_name}")
+            • region          (string, should equal "{prompt_region}")
             • relevant_columns (array of dataset column titles)
 
             # Additional Context
@@ -854,7 +906,7 @@ def run_analysis(
 
             # ---------- 3. GPT *narrative* call ----------
             narrative_prompt = f"""
-            # Data for {region_name}
+            # Data for {prompt_region}
             {comp_lines}
 
             # Task
@@ -865,7 +917,7 @@ def run_analysis(
 
             # Requirements
             -   Write for someone in government, who is in charge of **policy or decision-making**, who may not be familiar with these indicators.
-            -   For each **interpretation** Explain why this is important regarding the {region_name} region and {category_temp} subcategory
+            -   For each **interpretation** Explain why this is important regarding the {prompt_region} region and {prompt_category} subcategory
             -   Keep the explanations clear, informative, and concise.
             -   The outputs must strictly follow what is set in the following **# Example** with no deviations.
 
@@ -936,6 +988,15 @@ def run_analysis(
                 - Initial recommendations text
                 - Final project selections text
         """
+        
+        # NORMALIZE INPUTS TO ENGLISH FOR CONSISTENT ENGLISH RESPONSE GENERATION
+        # Always use English names when generating English responses, regardless of current language mode
+        english_region = cache_manager._normalize_region_name(region_temp)
+        english_subcategory = cache_manager._normalize_category_name(subcategory)
+        
+        # Use normalized English names for all prompts to prevent Serbian names in English responses
+        prompt_region = english_region
+        prompt_subcategory = english_subcategory
 
         # Check cache for project recommendations
         cached_projects = cache_manager.get_cached_response(
@@ -1130,7 +1191,7 @@ def run_analysis(
         # FIRST AGENT - General Regional Summary
         task_research = f"""
             # Task
-            -   Provide a summary regarding the {cache_manager.region_sr_to_en[region_temp] if language == 'sr' else region_temp} municipality of Serbia when it comes to {cache_manager.category_sr_to_en[subcategory] if language == 'sr' else subcategory}, focusing on its assets, weaknesses, and most relevant challenges.
+            -   Provide a summary regarding the {prompt_region} municipality of Serbia when it comes to {prompt_subcategory}, focusing on its assets, weaknesses, and most relevant challenges.
             -   Also look for basic information regarding the municipality such as its location, population, etc..,
             
             
@@ -1174,7 +1235,7 @@ def run_analysis(
             You are a governance specialist with deep expertise in both national and sub-national public policy for countries located in the Western Balkans.
 
             # Instructions 
-            -   Your task is to generate project recommendations for the {cache_manager.region_sr_to_en[region_temp] if language == 'sr' else region_temp} municipality in terms of {cache_manager.category_sr_to_en[subcategory] if language == 'sr' else subcategory}. 
+            -   Your task is to generate project recommendations for the {prompt_region} municipality in terms of {prompt_subcategory}. 
             -   However, these recommendations must be **strictly based on** 
                     - the regional analysis 
                     - regional summary 
@@ -1198,7 +1259,7 @@ def run_analysis(
             1. Addresses critical gaps identified in the regional data
             2. Builds on existing regional strengths/assets  
             3. Feasible given typical municipal budgets and capabilities
-            4. Aligns with {cache_manager.category_sr_to_en[subcategory] if language == 'sr' else subcategory} sector priorities
+            4. Aligns with {prompt_subcategory} sector priorities
             5. Has measurable impact potential
 
             # Requirements
@@ -1209,7 +1270,7 @@ def run_analysis(
             -   Maintain consistent terminology and structure
 
             # Format (Follow Exactly)
-            Based on the regional analysis data for {cache_manager.region_sr_to_en[region_temp] if language == 'sr' else region_temp}, here are the 5 most viable public investment projects ranked by implementation feasibility:
+            Based on the regional analysis data for {prompt_region}, here are the 5 most viable public investment projects ranked by implementation feasibility:
             
             **1. [Specific Project Name]**
             \n*Project Description:* [50-75 words describing the project scope and components]
@@ -1242,52 +1303,33 @@ def run_analysis(
         
             
 
+        # Generate initial recommendations first
         if language == 'en':
-            
             st.subheader("Initial Project Recommendations")
-
-            # SHOW INTERMEDIATE RESPONSE (Processing Message)
-            with st.status("Generating project recommendations... This may take a moment.", expanded=True) as status:
-                initial_response = client.chat.completions.create(model="gpt-4.1", messages=project_messages, temperature=RECOMMENDATION_TEMPERATURE, seed=42)
-                initial_recommendations = initial_response.choices[0].message.content
-
-                # FILTER RELEVANT PROJECTS
-                df_projects_temp = df_projects[df_projects['Investment Sector'].str.contains(subcategory, case=False, na=False)]
-                if option_category == 'Environment':
-                    df_projects_temp = df_projects_temp[df_projects_temp['Project Description'].str.contains("air | air pollution | emissions | co2 | CO2", na=False)]
-                
-                if option_category == 'Sustainable Transport':
-                    df_projects_temp = df_projects_temp[df_projects_temp['Status'] != 'Preparation']
-
-                json_projects = df_projects_temp.to_json(orient="records")
-                
-            # DISPLAY INITIAL RESPONSE
-            # st.subheader("Initial Project Recommendations")
-            st.write(initial_recommendations)
-        
-        if language == 'sr':
-
+            status_message = "Generating project recommendations... This may take a moment."
+        else:
             st.subheader("Прве препоруке за пројекте")
+            status_message = "Генерисање препорука пројеката... Ово може потрајати неколико тренутака."
 
-            # SHOW INTERMEDIATE RESPONSE (Processing Message)
-            with st.status("Генерисање препорука пројеката... Ово може потрајати неколико тренутака.", expanded=True) as status:
-                initial_response = client.chat.completions.create(model="gpt-4.1", messages=project_messages, temperature=RECOMMENDATION_TEMPERATURE, seed=42)
-                initial_recommendations = initial_response.choices[0].message.content
+        # SHOW INTERMEDIATE RESPONSE (Processing Message)
+        with st.status(status_message, expanded=True) as status:
+            initial_response = client.chat.completions.create(model="gpt-4.1", messages=project_messages, temperature=RECOMMENDATION_TEMPERATURE, seed=42)
+            initial_recommendations = initial_response.choices[0].message.content
 
-                # FILTER RELEVANT PROJECTS
-                # df_projects_temp = df_projects[df_projects['Земља корисница'].str.contains(subcategory, case=False, na=False)]
-                df_projects_temp = df_projects[df_projects['Investment Sector'].str.contains(subcategory, case=False, na=False)]
-                if option_category == 'Животна средина':
-                    # df_projects_temp = df_projects_temp[df_projects_temp['Опис пројекта'].str.contains("ваздух | загађење ваздуха | емисије | cO2 | CO2")]
-                    df_projects_temp = df_projects_temp[df_projects_temp['Project Description'].str.contains("air | air pollution | emissions | co2 | CO2", na=False)]
-                if option_category == 'Одрживи транспорт':
-                    #  df_projects_temp = df_projects_temp[df_projects_temp['Статус'] != 'Припрема']
-                    df_projects_temp = df_projects_temp[df_projects_temp['Status'] != 'Preparation']
+            # FILTER RELEVANT PROJECTS (using English category names for consistency)
+            df_projects_temp = df_projects[df_projects['Investment Sector'].str.contains(prompt_subcategory, case=False, na=False)]
+            if prompt_subcategory == 'Environment':
+                df_projects_temp = df_projects_temp[df_projects_temp['Project Description'].str.contains("air | air pollution | emissions | co2 | CO2", na=False)]
+            
+            if prompt_subcategory == 'Sustainable Transport':
+                df_projects_temp = df_projects_temp[df_projects_temp['Status'] != 'Preparation']
 
-                json_projects = df_projects_temp.to_json(orient="records")
-
-            # DISPLAY INITIAL RESPONSE
-            # st.subheader("Прве препоруке за пројекте")
+            json_projects = df_projects_temp.to_json(orient="records")
+            
+        # DISPLAY INITIAL RESPONSE
+        if language == 'en':
+            st.write(initial_recommendations)
+        else:
             st.write(translate_en_to_sr(initial_recommendations))
 
         relevant_projects_q = f"""
@@ -1296,7 +1338,7 @@ def run_analysis(
         -   Present exactly 5 projects with complete information including project description, location, expected beneficiaries, lead IFI, cost, and URL
 
         # Requirements
-        -   Projects should be selected based on relevance to {cache_manager.category_sr_to_en[subcategory] if language == 'sr' else subcategory} and alignment with the **# Additional Context** recommendations
+        -   Projects should be selected based on relevance to {prompt_subcategory} and alignment with the **# Additional Context** recommendations
         -   The chosen projects serve as examples for policy makers to learn from
         -   If projects are not thematically relevant to the recommendations, select projects from the same industry/theme
         -   Always output exactly 5 projects unless fewer than 5 relevant projects exist
@@ -1305,14 +1347,14 @@ def run_analysis(
         -   Maintain consistent terminology and project numbering
 
         # Format (Follow Exactly)
-        Here are the projects that align closely with the recommendations for {cache_manager.region_sr_to_en[region_temp] if language == 'sr' else region_temp}, focusing particularly on {cache_manager.category_sr_to_en[subcategory] if language == 'sr' else subcategory}:
+        Here are the projects that align closely with the recommendations for {prompt_region}, focusing particularly on {prompt_subcategory}:
     
         1. **[Project Title]**
             - *Project Description:* [approximately 50 words]
             - *Location:* [specific location]
             - *Beneficiaries:* [target beneficiaries]
             - *Lead IFI:* [Full Institution Name (ABBREVIATION)]
-            - *Sector:* {cache_manager.category_sr_to_en[subcategory] if language == 'sr' else subcategory}
+            - *Sector:* {prompt_subcategory}
             - *Type:* [project type]
             - *Total Financing:* [amount]
             - *Project Benefits:* [key benefits]
@@ -1486,8 +1528,10 @@ def run_analysis(
         # Ensure function only runs once
         if language == 'en':
             flag = "What Project Recommendations Follow?"
-        if language == 'sr':
+        elif language == 'sr':
             flag = "Које препоруке за пројекте следе?"
+        else:
+            flag = "What Project Recommendations Follow?"  # Default fallback
 
         if st.button(flag) and not st.session_state.project_recommendations_completed:
             project_recommendations = project_recommendation_agent(st.session_state.option_region, st.session_state.option_category, st.session_state.regional_analysis_results, language=language)
