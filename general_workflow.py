@@ -1041,59 +1041,73 @@ def run_analysis(
                 region_temp, subcategory, 'projects'
             )
             if english_projects:
-                # Translate existing English response and cache the Serbian version
+                # First, split the English content into components before translation
+                if "|||INITIAL_RECOMMENDATIONS|||" in english_projects and "|||FINAL_PROJECTS|||" in english_projects:
+                    # New 3-part format: research|||INITIAL_RECOMMENDATIONS|||initial|||FINAL_PROJECTS|||final
+                    parts = english_projects.split("|||INITIAL_RECOMMENDATIONS|||")
+                    if len(parts) == 2:
+                        english_research = parts[0].strip()
+                        remaining = parts[1].split("|||FINAL_PROJECTS|||")
+                        if len(remaining) == 2:
+                            english_initial = remaining[0].strip()
+                            english_final = remaining[1].strip()
+                        else:
+                            english_initial = remaining[0].strip()
+                            english_final = remaining[0].strip()
+                    else:
+                        english_research = ""
+                        english_initial = english_projects
+                        english_final = english_projects
+                elif "|||FINAL_PROJECTS|||" in english_projects:
+                    # Old 2-part format: initial|||FINAL_PROJECTS|||final
+                    english_research = ""
+                    parts = english_projects.split("|||FINAL_PROJECTS|||")
+                    if len(parts) == 2:
+                        english_initial = parts[0].strip()
+                        english_final = parts[1].strip()
+                    else:
+                        english_initial = english_projects
+                        english_final = english_projects
+                else:
+                    # No delimiters found
+                    english_research = ""
+                    english_initial = english_projects
+                    english_final = english_projects
+                
+                # Now translate and display each component sequentially
                 flag = f"Преводим препоруке пројеката за {subcategory} у региону {region_temp}..."
                 with st.status(flag, expanded=True) as status:
-                    translated_projects = translate_en_to_sr(english_projects)
+                    # Translate and display research content if it exists
+                    research_content = ""
+                    if english_research:
+                        st.write("Преводим истраживање позадине...")
+                        research_content = translate_en_to_sr(english_research)
+                        st.subheader("Истраживање позадине")
+                        st.write(research_content)
+                    
+                    # Translate and display initial recommendations
+                    st.write("Преводим прве препоруке за пројекте...")
+                    initial_recommendations = translate_en_to_sr(english_initial)
+                    st.subheader("Прве препоруке за пројекте")
+                    st.write(initial_recommendations)
+                    
+                    # Translate and display final project selection
+                    st.write("Преводим коначни избор пројеката...")
+                    final_project_selection = translate_en_to_sr(english_final)
+                    st.subheader("Коначни избор пројеката")
+                    st.write(final_project_selection)
+                    
+                    # Reconstruct the full translated response for caching
+                    if research_content:
+                        translated_projects = f"{research_content}|||INITIAL_RECOMMENDATIONS|||{initial_recommendations}|||FINAL_PROJECTS|||{final_project_selection}"
+                    else:
+                        translated_projects = f"{initial_recommendations}|||FINAL_PROJECTS|||{final_project_selection}"
+                    
                     # Cache the translated response for future Serbian requests
                     cache_manager.save_response(
                         region_temp, subcategory, 'projects', 
                         translated_projects, language
                     )
-                    # Split translated content into research, initial recommendations, and final projects
-                    if "|||INITIAL_RECOMMENDATIONS|||" in translated_projects and "|||FINAL_PROJECTS|||" in translated_projects:
-                        # New 3-part format: research|||INITIAL_RECOMMENDATIONS|||initial|||FINAL_PROJECTS|||final
-                        parts = translated_projects.split("|||INITIAL_RECOMMENDATIONS|||")
-                        if len(parts) == 2:
-                            research_content = parts[0].strip()
-                            remaining = parts[1].split("|||FINAL_PROJECTS|||")
-                            if len(remaining) == 2:
-                                initial_recommendations = remaining[0].strip()
-                                final_project_selection = remaining[1].strip()
-                            else:
-                                initial_recommendations = remaining[0].strip()
-                                final_project_selection = remaining[0].strip()
-                        else:
-                            research_content = ""
-                            initial_recommendations = translated_projects
-                            final_project_selection = translated_projects
-                    elif "|||FINAL_PROJECTS|||" in translated_projects:
-                        # Old 2-part format: initial|||FINAL_PROJECTS|||final
-                        research_content = ""
-                        parts = translated_projects.split("|||FINAL_PROJECTS|||")
-                        if len(parts) == 2:
-                            initial_recommendations = parts[0].strip()
-                            final_project_selection = parts[1].strip()
-                        else:
-                            initial_recommendations = translated_projects
-                            final_project_selection = translated_projects
-                    else:
-                        # No delimiters found
-                        research_content = ""
-                        initial_recommendations = translated_projects
-                        final_project_selection = translated_projects
-                    
-                    # Display cached research and project recommendations
-                    if research_content:
-                        st.subheader("Истраживање позадине")
-                        st.write(research_content)
-                    
-                    # Display translated cached responses
-                    st.subheader("Прве препоруке за пројекте")
-                    st.write(initial_recommendations)
-                    
-                    st.subheader("Коначни избор пројеката")
-                    st.write(final_project_selection)
                     
                     return initial_recommendations, final_project_selection
 
