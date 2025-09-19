@@ -374,8 +374,7 @@ def run_analysis(
     def extract_regional_data(
         df: pd.DataFrame,
         region: str,
-        relevant_columns: List[str],
-        language: str = 'en'
+        relevant_columns: List[str]
     ) -> pd.DataFrame:
         """
         Filters the DataFrame based on the specified region and relevant columns.
@@ -389,12 +388,7 @@ def run_analysis(
         Returns:
             pd.DataFrame: Filtered DataFrame containing only the specified region and columns
         """
-        if language == 'en':
-            lang_col = "ENGLISH_NAME"
-        elif language == 'sr':
-            lang_col = 'SERBIAN_NAME_CYRILLIC'
-        else:
-            lang_col = "ENGLISH_NAME"  # Default fallback
+        lang_col = "ENGLISH_NAME"
 
         valid_columns = [col for col in relevant_columns if col in df.columns]
         return df.loc[df[lang_col] == region, valid_columns]
@@ -652,39 +646,6 @@ def run_analysis(
         cached_response = cache_manager.get_cached_response(
             region_temp, category_temp, 'indicators', language
         )
-        
-        if cached_response:
-            # Add 2-second delay with status indicator for cached responses
-            if language == 'en':
-                flag = f"Starting analysis for {category_temp} in {region_temp}..."
-            else:  # Serbian
-                flag = f"Почиње анализа категорије {category_temp} у региону {region_temp}..."
-                
-            with st.status(flag, expanded=True) as status:
-                time.sleep(sleep_t)  # 2-second delay
-            
-            # Return cached response content
-            if isinstance(cached_response, dict):
-                return cached_response['content']
-            return cached_response
-
-        # If Serbian is requested but no Serbian cache exists, check for English version for translation optimization
-        if language == 'sr' and not cached_response:
-            english_response = cache_manager.get_english_response(
-                region_temp, category_temp, 'indicators'
-            )
-            if english_response:
-                # Translate existing English response and cache the Serbian version
-                flag = f"Преводим анализу за {category_temp} у региону {region_temp}..."
-                with st.status(flag, expanded=True) as status:
-                    translated_response = translate_en_to_sr(english_response)
-                    # Cache the translated response for future Serbian requests
-                    cache_manager.save_response(
-                        region_temp, category_temp, 'indicators', 
-                        translated_response, language
-                    )
-                    return translated_response
-
         category_indicator_dict = {}
         category_indicator_dict['Education'] = ["Accessibility to School Services (unit: %)",
                                                 "Key Structures without Internet Access (unit: %)",
@@ -708,6 +669,54 @@ def run_analysis(
                                                             "Road flood risk per capita (unit: km per capita)",
                                                             "Railway heatwave risk per capita (unit: km per capita)",
                                                             "Road heatwave risk per capita (unit: km per capita)"]   
+        
+        response_content = f"Here is the outline of the indicators relevant to {prompt_category}, ordered by their relevance:\n\n"
+        count = 1
+        code_list = df_temp[df_temp['indicator_name_full'].isin(category_indicator_dict[prompt_category])]['indicator_name'].to_list()
+        name_list = df_temp[df_temp['indicator_name_full'].isin(category_indicator_dict[prompt_category])]['indicator_name_full'].to_list()
+        desc_list = df_temp[df_temp['indicator_name_full'].isin(category_indicator_dict[prompt_category])]['indicator_description'].to_list()
+            
+
+        for i in range(len(name_list)):
+            response_content = response_content + f"""{count}. **{name_list[i]}**: {desc_list[i]}\n\n"""
+            count += 1
+
+        code_name_dict = {}
+        for i in range(len(code_list)):
+            code_name_dict[code_list[i]] = name_list[i]
+
+
+        if cached_response:
+            # Add 2-second delay with status indicator for cached responses
+            if language == 'en':
+                flag = f"Starting analysis for {category_temp} in {region_temp}..."
+            else:  # Serbian
+                flag = f"Почиње анализа категорије {category_temp} у региону {region_temp}..."
+                
+            with st.status(flag, expanded=True) as status:
+                time.sleep(sleep_t)  # 2-second delay
+            
+            # Return cached response content
+            if isinstance(cached_response, dict):
+                return cached_response['content'], [code_list, code_name_dict]
+            return cached_response, [code_list, code_name_dict]
+
+        # If Serbian is requested but no Serbian cache exists, check for English version for translation optimization
+        if language == 'sr' and not cached_response:
+            english_response = cache_manager.get_english_response(
+                region_temp, category_temp, 'indicators'
+            )
+            if english_response:
+                # Translate existing English response and cache the Serbian version
+                flag = f"Преводим анализу за {category_temp} у региону {region_temp}..."
+                with st.status(flag, expanded=True) as status:
+                    translated_response = translate_en_to_sr(english_response)
+                    # Cache the translated response for future Serbian requests
+                    cache_manager.save_response(
+                        region_temp, category_temp, 'indicators', 
+                        translated_response, language
+                    )
+                    return translated_response, [code_list, code_name_dict]
 
         # Generate new response if not in cache
         if language == 'en':
@@ -720,15 +729,6 @@ def run_analysis(
 
         with st.status(flag, expanded=True) as status:
 
-            response_content = f"Here is the outline of the indicators relevant to {prompt_category}, ordered by their relevance:\n\n"
-            count = 1
-            print(df_temp.columns)
-            name_list = df_temp[df_temp['indicator_name_full'].isin(category_indicator_dict[prompt_category])]['indicator_name_full'].to_list()
-            desc_list = df_temp[df_temp['indicator_name_full'].isin(category_indicator_dict[prompt_category])]['indicator_description'].to_list()
-
-            for i in range(len(name_list)):
-                response_content = response_content + f"""{count}. **{name_list[i]}**: {desc_list[i]}\n\n"""
-                count += 1
 
             # json_columns = df_temp.to_json(orient='records')
             # question_output = f"""
@@ -763,7 +763,7 @@ def run_analysis(
                     region_temp, category_temp, 'indicators', 
                     response_content, language
                 )
-                return response_content
+                return response_content, [code_list, code_name_dict]
             elif language == 'sr':
                 # For Serbian, first cache the English response, then translate
                 cache_manager.save_response(
@@ -775,12 +775,11 @@ def run_analysis(
                     region_temp, category_temp, 'indicators', 
                     translated_response, language
                 )
-                return translated_response
+                return translated_response, [code_list, code_name_dict]
 
     def build_comparison_lines(
         regional_df: pd.DataFrame,
-        national_df: pd.DataFrame,
-        language: str = 'en'
+        national_df: pd.DataFrame
     ) -> str:
         """
         Converts regional and national DataFrames into a formatted comparison string.
@@ -798,12 +797,7 @@ def run_analysis(
             2020: 12.3 Mbps – Veliko Gradište | 18.1 Mbps – National avg
             2021: ...
         """
-        if language == 'en':
-            col = "ENGLISH_NAME"
-        elif language == 'sr':
-            col = "SERBIAN_NAME_CYRILLIC"
-        else:
-            col = "ENGLISH_NAME"  # Default fallback
+        col = "ENGLISH_NAME"
 
         lines = []
 
@@ -823,7 +817,7 @@ def run_analysis(
 
     def regional_analysis(
         region_name: str,
-        relevant_indicators: str,
+        relevant_indicators: List,
         category_temp: str,
         language: str = 'en'
     ) -> str:
@@ -832,7 +826,7 @@ def run_analysis(
 
         Args:
             region_name (str): Name of the region to analyze
-            relevant_indicators (str): Text containing relevant indicators
+            relevant_indicators (List[List, Dict]): List containing relevant indicators, and code names
             category_temp (str): Category being analyzed
             language (str, optional): Language code. Defaults to 'en'
 
@@ -893,41 +887,44 @@ def run_analysis(
 
         with st.status(flag, expanded=True) as status:
 
-            # ---------- 1. GPT *extraction* call ----------
-            json_columns = df_indicators.columns[4:].tolist()
+            # # ---------- 1. GPT *extraction* call ----------
+            # json_columns = df_indicators.columns[4:].tolist()
 
-            extract_prompt = f"""
-            # Task
-            From the text below, return JSON with keys:
-            • region          (string, should equal "{prompt_region}")
-            • relevant_columns (array of dataset column titles)
+            # extract_prompt = f"""
+            # # Task
+            # From the text below, return JSON with keys:
+            # • region          (string, should equal "{prompt_region}")
+            # • relevant_columns (array of dataset column titles)
 
-            # Additional Context
-            The following is text that lists indicators
-            {relevant_indicators}
+            # # Additional Context
+            # The following is text that lists indicators
+            # {relevant_indicators}
 
-            And the following are the dataset column titles
-            {json_columns}
+            # And the following are the dataset column titles
+            # {json_columns}
 
-            Return *only* the JSON, no prose."""
+            # Return *only* the JSON, no prose."""
             
-            messages = [
-                {"role": "system", "content": SYSTEM_MESSAGE},
-                {"role": "user",   "content": extract_prompt}
-            ]
-            response = client.chat.completions.create(
-                model="gpt-4.1",
-                messages=messages,
-                tools=TOOLS,
-                tool_choice="auto",
-                temperature=1
-            )
+            # messages = [
+            #     {"role": "system", "content": SYSTEM_MESSAGE},
+            #     {"role": "user",   "content": extract_prompt}
+            # ]
+            # response = client.chat.completions.create(
+            #     model="gpt-4.1",
+            #     messages=messages,
+            #     tools=TOOLS,
+            #     tool_choice="auto",
+            #     temperature=1
+            # )
 
-            # print(response.choices[0].message)
-            raw_content = response.choices[0].message.content
-            json_str = re.sub(r"```json\s*|```", "", raw_content).strip()
-            cols_parsed = json.loads(json_str)
-            cols = cols_parsed.get("relevant_columns", [])
+            # # print(response.choices[0].message)
+            # raw_content = response.choices[0].message.content
+            # json_str = re.sub(r"```json\s*|```", "", raw_content).strip()
+            # cols_parsed = json.loads(json_str)
+            # cols = cols_parsed.get("relevant_columns", [])
+
+            code_list, code_name_dict = relevant_indicators
+            cols = code_list
             if language == 'en':
                 cols.extend(['ENGLISH_NAME', 'year'])
             if language == 'sr':
@@ -935,9 +932,11 @@ def run_analysis(
 
 
             # ---------- 2.  deterministic numeric step ----------
-            regional_df = extract_regional_data(df_indicators, region_name, cols, language)
+            regional_df = extract_regional_data(df_indicators, region_name, cols)
+            regional_df = regional_df.rename(code_name_dict, axis=1)
             national_df = extract_national_data(averages_df.reset_index(), cols)
-            comp_lines  = build_comparison_lines(regional_df, national_df, language)
+            national_df = national_df.rename(code_name_dict, axis=1)
+            comp_lines  = build_comparison_lines(regional_df, national_df)
 
             # ---------- 3. GPT *narrative* call ----------
             narrative_prompt = f"""
@@ -990,6 +989,7 @@ def run_analysis(
                     response_content, language
                 )
                 return response_content
+
             elif language == 'sr':
                 # For Serbian, first cache the English response, then translate
                 cache_manager.save_response(
@@ -1519,7 +1519,8 @@ def run_analysis(
             st.session_state.start_analysis = True  # Set flag when button is clicked
 
     if st.session_state.start_analysis and not st.session_state.analysis_completed:
-        relevant_indicators = df_indicatorlist_analysis(st.session_state.option_category, df_indicatorlist, st.session_state.option_region, language=language) 
+        relevant_indicators, c_list = df_indicatorlist_analysis(st.session_state.option_category, df_indicatorlist, st.session_state.option_region, language=language) 
+        st.session_state.code_list = c_list
         st.session_state.relevant_indicators = relevant_indicators
         st.session_state.analysis_completed = True  # Mark analysis as complete
 
@@ -1538,12 +1539,12 @@ def run_analysis(
 
         if language == 'en':
             if st.button("Let's conduct a Regional Analysis") and not st.session_state.regional_analysis_completed:
-                regional_analysis_results = regional_analysis(st.session_state.option_region, st.session_state.relevant_indicators, st.session_state.option_category, language=language)
+                regional_analysis_results = regional_analysis(st.session_state.option_region, st.session_state.code_list, st.session_state.option_category, language=language)
                 st.session_state.regional_analysis_results = regional_analysis_results
                 st.session_state.regional_analysis_completed = True
         else:
             if st.button("Хајде да урадимо регионалну анализу") and not st.session_state.regional_analysis_completed:
-                regional_analysis_results = regional_analysis(st.session_state.option_region, st.session_state.relevant_indicators, st.session_state.option_category, language=language)
+                regional_analysis_results = regional_analysis(st.session_state.option_region, st.session_state.code_list, st.session_state.option_category, language=language)
                 st.session_state.regional_analysis_results = regional_analysis_results
                 st.session_state.regional_analysis_completed = True
         
