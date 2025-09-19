@@ -640,7 +640,7 @@ def run_analysis(
         Returns:
             str: Formatted analysis text with relevant indicators
         """
-        
+
         # NORMALIZE INPUTS TO ENGLISH FOR CONSISTENT ENGLISH RESPONSE GENERATION
         # Always use English names when generating English responses, regardless of current language mode
         english_category = cache_manager._normalize_category_name(category_temp)
@@ -715,10 +715,10 @@ def run_analysis(
 
             response = client.chat.completions.create(
                 model="gpt-4.1-mini",
-                messages=messages,
-                temperature=0.3,
-                seed=42
-            )
+                    messages=messages,
+                    temperature=0.3,
+                    seed=42
+                )
             
             response_content = response.choices[0].message.content
             
@@ -947,7 +947,7 @@ def run_analysis(
             )
 
             response_content = narrative_response.choices[0].message.content
-            
+
             if language == 'en':
                 # Cache the English response
                 cache_manager.save_response(
@@ -1202,29 +1202,29 @@ def run_analysis(
             """
 
         # Generate and display background research before project recommendations
-        if language == 'en':
-            st.subheader("Background Research")
-            status_temp = f"Doing some background research on {region_temp}... This may take a moment."
-        else:
-            st.subheader("Истраживање позадине")
-            status_temp = f"Проводим нека истраживања о {region_temp}... Ово може потрајати неколико тренутака."
-        
-        with st.status(status_temp, expanded=True) as status:
-            research_messages = [{"role": "system", "content": research_system_message}, 
-                                {"role": "user", "content": task_research}]
+            if language == 'en':
+                st.subheader("Background Research")
+                status_temp = f"Doing some background research on {region_temp}... This may take a moment."
+            else:
+                st.subheader("Истраживање позадине")
+                status_temp = f"Проводим нека истраживања о {region_temp}... Ово може потрајати неколико тренутака."
+            
+            with st.status(status_temp, expanded=True) as status:
+                research_messages = [{"role": "system", "content": research_system_message}, 
+                                    {"role": "user", "content": task_research}]
 
-            research_response = client.chat.completions.create(
+                research_response = client.chat.completions.create(
                 model="gpt-4.1", 
-                messages=research_messages, 
-                temperature=RESEARCH_TEMPERATURE, 
-                seed=RANDOM_SEED,
-                max_tokens=200
-            )
+                    messages=research_messages, 
+                    temperature=RESEARCH_TEMPERATURE, 
+                    seed=RANDOM_SEED,
+                    max_tokens=200
+                )
             regional_summary = research_response.choices[0].message.content
         
         # Display background research
         if language == 'en':
-            st.write(regional_summary)
+                st.write(regional_summary)
         else:
             translated_research = translate_en_to_sr(regional_summary)
             st.write(translated_research)
@@ -1271,7 +1271,7 @@ def run_analysis(
 
             # Format (Follow Exactly)
             Based on the regional analysis data for {prompt_region}, here are the 5 most viable public investment projects ranked by implementation feasibility:
-            
+
             **1. [Specific Project Name]**
             \n*Project Description:* [50-75 words describing the project scope and components]
             \n*Data-Based Justification:* [Reference specific indicators/findings from Regional Analysis that support this project - 75-100 words]
@@ -1311,10 +1311,10 @@ def run_analysis(
             st.subheader("Прве препоруке за пројекте")
             status_message = "Генерисање препорука пројеката... Ово може потрајати неколико тренутака."
 
-        # SHOW INTERMEDIATE RESPONSE (Processing Message)
+            # SHOW INTERMEDIATE RESPONSE (Processing Message)
         with st.status(status_message, expanded=True) as status:
             initial_response = client.chat.completions.create(model="gpt-4.1", messages=project_messages, temperature=RECOMMENDATION_TEMPERATURE, seed=42)
-            initial_recommendations = initial_response.choices[0].message.content
+                initial_recommendations = initial_response.choices[0].message.content
 
             # FILTER RELEVANT PROJECTS (using English category names for consistency)
             df_projects_temp = df_projects[df_projects['Investment Sector'].str.contains(prompt_subcategory, case=False, na=False)]
@@ -1322,11 +1322,11 @@ def run_analysis(
                 df_projects_temp = df_projects_temp[df_projects_temp['Project Description'].str.contains("air | air pollution | emissions | co2 | CO2", na=False)]
             
             if prompt_subcategory == 'Sustainable Transport':
-                df_projects_temp = df_projects_temp[df_projects_temp['Status'] != 'Preparation']
+                    df_projects_temp = df_projects_temp[df_projects_temp['Status'] != 'Preparation']
 
-            json_projects = df_projects_temp.to_json(orient="records")
-            
-        # DISPLAY INITIAL RESPONSE
+                json_projects = df_projects_temp.to_json(orient="records")
+                
+            # DISPLAY INITIAL RESPONSE
         if language == 'en':
             st.write(initial_recommendations)
         else:
@@ -1348,7 +1348,7 @@ def run_analysis(
 
         # Format (Follow Exactly)
         Here are the projects that align closely with the recommendations for {prompt_region}, focusing particularly on {prompt_subcategory}:
-    
+
         1. **[Project Title]**
             - *Project Description:* [approximately 50 words]
             - *Location:* [specific location]
@@ -1397,14 +1397,14 @@ def run_analysis(
             # DISPLAY FINAL OUTPUT
             st.subheader("Final Project Selections")
             with st.status("Matching with similar projects within the region... This may take a moment.", expanded=True) as status:
-                
-                final_response = client.chat.completions.create(
+        
+        final_response = client.chat.completions.create(
                     model="gpt-4.1", 
-                    messages=final_project_messages, 
-                    temperature=FINAL_SELECTION_TEMPERATURE, 
-                    seed=RANDOM_SEED
-                )
-                final_project_selection = final_response.choices[0].message.content
+            messages=final_project_messages, 
+            temperature=FINAL_SELECTION_TEMPERATURE, 
+            seed=RANDOM_SEED
+        )
+        final_project_selection = final_response.choices[0].message.content
 
                 # Cache the combined results for English with research
                 combined_content = f"{regional_summary}|||INITIAL_RECOMMENDATIONS|||{initial_recommendations}|||FINAL_PROJECTS|||{final_project_selection}"
