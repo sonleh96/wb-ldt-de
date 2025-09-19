@@ -41,8 +41,8 @@ openai_api_key = os.getenv('openai_apikey')
 
 # credentials = service_account.Credentials.from_service_account_info(creds_info)
 credentials = service_account.Credentials.from_service_account_file(
-    # r"D:\Work\WB\LDT\credentials\wb-ldt-948953b71056.json"
-    "/Users/sonle/Documents/work/WB/LDT_DecisionEngine/credentials/wb-ldt-948953b71056.json"
+    r"D:\Work\WB\LDT\credentials\wb-ldt-948953b71056.json"
+    # "/Users/sonle/Documents/work/WB/LDT_DecisionEngine/credentials/wb-ldt-948953b71056.json"
 )
 storage_client = storage.Client(credentials=credentials)
 
