@@ -144,7 +144,7 @@ def get_image_from_gcs(bucket_name: str, image_name: str) -> Image.Image:
 df_indicatorlist = read_csv_from_gcs(BUCKET_NAME, "decision_engine/inputs/Indicator List v2.csv",
                                      delimiter=',', encoding='cp1252', on_bad_lines='warn')
 
-df_indicators = read_csv_from_gcs(BUCKET_NAME, "decision_engine/inputs/SRB Absolute Full_v3.csv")
+df_indicators = read_csv_from_gcs(BUCKET_NAME, "decision_engine/inputs/SRB Absolute Full_v4.csv")
 
 # List of Regions #
 regions = df_indicators['ENGLISH_NAME'].unique().tolist()
