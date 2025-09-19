@@ -685,42 +685,77 @@ def run_analysis(
                     )
                     return translated_response
 
+        category_indicator_dict = {}
+        category_indicator_dict['Education'] = ["Accessibility to School Services (unit: %)",
+                                                "Key Structures without Internet Access (unit: %)",
+                                                "Key Structure Average Broadband Download Speed (unit: megabites per second)"]
+        category_indicator_dict["Energy Access"] = ["Nighttime Luminosity (unit: nWatts/(cm2 x sr)"]
+        category_indicator_dict["Environment"] = ["Emissions from all sources (unit: kgCO2e/kg)",
+                                                "Emissions from Coal Power Plants (unit: kgCO2e/kg)",
+                                                "Agriculture Emissions (unit: kgCO2e/kg)",
+                                                "Forestry & Land Use Emissions (unit: kgCO2e/kg)",
+                                                "PM 2.5 concentration (unit: µg/m3)",
+                                                "NO2 concentration (unit: µg/m3)"]
+        category_indicator_dict['Digitalization'] = ["Key Structure Average Broadband Download Speed (unit: megabites per second)",
+                                                    "Key Structures without Internet Access (unit: %)",
+                                                    "Average Cellular Download Speed (unit: megabites per second)"]
+        category_indicator_dict['Health'] = ["Accessibility to Health Services (unit: %)",
+                                                "Diversity of Health Services",
+                                                "PM 2.5 concentration (unit: µg/m3)",
+                                                "NO2 concentration (unit: µg/m3)",
+                                                "Key Structures without Internet Access (unit: %)"]
+        category_indicator_dict['Sustainable Transport'] = ["Railway flood risk per capita (unit: km per capita)",
+                                                            "Road flood risk per capita (unit: km per capita)",
+                                                            "Railway heatwave risk per capita (unit: km per capita)",
+                                                            "Road heatwave risk per capita (unit: km per capita)"]   
+
         # Generate new response if not in cache
         if language == 'en':
             flag = f"Starting analysis on {category_temp} in {region_temp}..."
-            df_temp = df_temp[df_temp['SubCategory'].str.contains(category_temp, case=False, na=False)]
+            # df_temp = df_temp[df_temp['SubCategory'].str.contains(category_temp, case=False, na=False)]
         elif language == 'sr':
             flag = f"Почиње анализа категорије {category_temp} у региону {region_temp}..."
-            df_temp = df_temp[df_temp['SubCategory'].str.contains(category_options_en[category_options_sr.index(category_temp)], 
-                                                                  case=False, na=False)]
+            # df_temp = df_temp[df_temp['SubCategory'].str.contains(category_options_en[category_options_sr.index(category_temp)], 
+            #                                                       case=False, na=False)]
 
         with st.status(flag, expanded=True) as status:
-            json_columns = df_temp.to_json(orient='records')
-            question_output = f"""
-                # Task
-                From the attached dataframe, outline the listed indicators.
 
-                # Requirements:
-                -   Mention the full name of the indicator from 'indicator_name_full' in **bold**, followed by ':' and its full description in regular text from 'indicator_descrption'.
-                -   Ensure the indicators are logically relevant to the category based on the provided information.
-                -   Outline the indicators in order of most relevant to {prompt_category}
+            response_content = f"Here is the outline of the indicators relevant to {prompt_category}, ordered by their relevance:\n\n"
+            count = 1
+            print(df_temp.columns)
+            name_list = df_temp[df_temp['indicator_name_full'].isin(category_indicator_dict[prompt_category])]['indicator_name_full'].to_list()
+            desc_list = df_temp[df_temp['indicator_name_full'].isin(category_indicator_dict[prompt_category])]['indicator_description'].to_list()
+
+            for i in range(len(name_list)):
+                response_content = response_content + f"""{count}. **{name_list[i]}**: {desc_list[i]}\n\n"""
+                count += 1
+
+            # json_columns = df_temp.to_json(orient='records')
+            # question_output = f"""
+            #     # Task
+            #     From the attached dataframe, outline the listed indicators.
+
+            #     # Requirements:
+            #     -   Mention the full name of the indicator from 'indicator_name_full' in **bold**, followed by ':' and its full description in regular text from 'indicator_descrption'.
+            #     -   Ensure the indicators are logically relevant to the category based on the provided information.
+            #     -   Outline the indicators in order of most relevant to {prompt_category}
                 
-                # Additional Context:
-                This is the dataframe: {json_columns}"""
+            #     # Additional Context:
+            #     This is the dataframe: {json_columns}"""
             
-            messages = [
-                {"role": "system", "content": SYSTEM_MESSAGE},
-                {"role": "user", "content": question_output}
-            ]
+            # messages = [
+            #     {"role": "system", "content": SYSTEM_MESSAGE},
+            #     {"role": "user", "content": question_output}
+            # ]
 
-            response = client.chat.completions.create(
-                model="gpt-4.1-mini",
-                    messages=messages,
-                    temperature=0.3,
-                    seed=42
-                )
+            # response = client.chat.completions.create(
+            #     model="gpt-4.1-mini",
+            #         messages=messages,
+            #         temperature=0.3,
+            #         seed=42
+            #     )
             
-            response_content = response.choices[0].message.content
+            # response_content = response.choices[0].message.content
             
             if language == 'en':
                 # Cache the English response
