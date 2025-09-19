@@ -925,11 +925,7 @@ def run_analysis(
 
             code_list, code_name_dict = relevant_indicators
             cols = code_list
-            if language == 'en':
-                cols.extend(['ENGLISH_NAME', 'year'])
-            if language == 'sr':
-                cols.extend(["SERBIAN_NAME_CYRILLIC", 'year'])
-
+            cols.extend(['ENGLISH_NAME', 'year'])
 
             # ---------- 2.  deterministic numeric step ----------
             regional_df = extract_regional_data(df_indicators, region_name, cols)
