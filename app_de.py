@@ -323,8 +323,6 @@ if lang_code == "en":
     if "option_category" not in st.session_state:
         st.session_state.option_category = "Education"
 
-    # df_projects = read_csv_from_gcs(BUCKET_NAME, "decision_engine/inputs/wbif_project_examples.csv")
-    # df_project = df_projects.drop(['Estimated Completion', 'Beneficiary Body', 'Total Grant', 'Total Loan'], axis=1)
     run_analysis(df_indicatorlist, df_indicators, averages_df, df_projects, regions, storage_client, language=lang_code)
 
 elif lang_code == "sr":
@@ -339,8 +337,5 @@ elif lang_code == "sr":
     st.subheader(app_subheader)
     if "option_category" not in st.session_state:
         st.session_state.option_category = "Образовање"
-
-    # df_projects = read_csv_from_gcs(BUCKET_NAME, "decision_engine/inputs/wbif_project_examples_serbian.csv", delimiter=';', on_bad_lines='warn')
-    # df_projects = df_projects.drop(['Процењени завршетак', 'Орган корисника', 'Тотал Грант (y €)', 'Тотал Лоан (y €)'], axis=1)
 
     run_analysis(df_indicatorlist, df_indicators, averages_df, df_projects, regions_sr, storage_client, language=lang_code)
