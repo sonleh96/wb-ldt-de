@@ -646,6 +646,8 @@ def run_analysis(
         cached_response = cache_manager.get_cached_response(
             region_temp, category_temp, 'indicators', language
         )
+        
+        # Category indicator dictionary
         category_indicator_dict = {}
         category_indicator_dict['Education'] = ["Accessibility to School Services (unit: %)",
                                                 "Key Structures without Internet Access (unit: %)",
@@ -670,22 +672,22 @@ def run_analysis(
                                                             "Railway heatwave risk per capita (unit: km per capita)",
                                                             "Road heatwave risk per capita (unit: km per capita)"]   
         
+        # Create hard-coded response content for indicator listing
         response_content = f"Here is the outline of the indicators relevant to {prompt_category}, ordered by their relevance:\n\n"
         count = 1
         code_list = df_temp[df_temp['indicator_name_full'].isin(category_indicator_dict[prompt_category])]['indicator_name'].to_list()
         name_list = df_temp[df_temp['indicator_name_full'].isin(category_indicator_dict[prompt_category])]['indicator_name_full'].to_list()
         desc_list = df_temp[df_temp['indicator_name_full'].isin(category_indicator_dict[prompt_category])]['indicator_description'].to_list()
-            
-
         for i in range(len(name_list)):
             response_content = response_content + f"""{count}. **{name_list[i]}**: {desc_list[i]}\n\n"""
             count += 1
 
+        # Create code name dictionary
         code_name_dict = {}
         for i in range(len(code_list)):
             code_name_dict[code_list[i]] = name_list[i]
 
-
+        # Check cache first
         if cached_response:
             # Add 2-second delay with status indicator for cached responses
             if language == 'en':
@@ -728,34 +730,6 @@ def run_analysis(
             #                                                       case=False, na=False)]
 
         with st.status(flag, expanded=True) as status:
-
-
-            # json_columns = df_temp.to_json(orient='records')
-            # question_output = f"""
-            #     # Task
-            #     From the attached dataframe, outline the listed indicators.
-
-            #     # Requirements:
-            #     -   Mention the full name of the indicator from 'indicator_name_full' in **bold**, followed by ':' and its full description in regular text from 'indicator_descrption'.
-            #     -   Ensure the indicators are logically relevant to the category based on the provided information.
-            #     -   Outline the indicators in order of most relevant to {prompt_category}
-                
-            #     # Additional Context:
-            #     This is the dataframe: {json_columns}"""
-            
-            # messages = [
-            #     {"role": "system", "content": SYSTEM_MESSAGE},
-            #     {"role": "user", "content": question_output}
-            # ]
-
-            # response = client.chat.completions.create(
-            #     model="gpt-4.1-mini",
-            #         messages=messages,
-            #         temperature=0.3,
-            #         seed=42
-            #     )
-            
-            # response_content = response.choices[0].message.content
             
             if language == 'en':
                 # Cache the English response
@@ -886,42 +860,6 @@ def run_analysis(
             flag = "Извођење регионалне анализе..."
 
         with st.status(flag, expanded=True) as status:
-
-            # # ---------- 1. GPT *extraction* call ----------
-            # json_columns = df_indicators.columns[4:].tolist()
-
-            # extract_prompt = f"""
-            # # Task
-            # From the text below, return JSON with keys:
-            # • region          (string, should equal "{prompt_region}")
-            # • relevant_columns (array of dataset column titles)
-
-            # # Additional Context
-            # The following is text that lists indicators
-            # {relevant_indicators}
-
-            # And the following are the dataset column titles
-            # {json_columns}
-
-            # Return *only* the JSON, no prose."""
-            
-            # messages = [
-            #     {"role": "system", "content": SYSTEM_MESSAGE},
-            #     {"role": "user",   "content": extract_prompt}
-            # ]
-            # response = client.chat.completions.create(
-            #     model="gpt-4.1",
-            #     messages=messages,
-            #     tools=TOOLS,
-            #     tool_choice="auto",
-            #     temperature=1
-            # )
-
-            # # print(response.choices[0].message)
-            # raw_content = response.choices[0].message.content
-            # json_str = re.sub(r"```json\s*|```", "", raw_content).strip()
-            # cols_parsed = json.loads(json_str)
-            # cols = cols_parsed.get("relevant_columns", [])
 
             code_list, code_name_dict = relevant_indicators
             cols = code_list
