@@ -1147,6 +1147,31 @@ def run_analysis(
         FINAL_SELECTION_TEMPERATURE = 0.1
         RANDOM_SEED = 42
 
+
+        additional_context = {}
+        additional_context['Digitalization'] = """According to the Country Benchmarking Dashboard (CBD), Serbia has a national 4G Coverage Score of 98 and 4G Penetration Score of 22 (both out of 100) based on the EU average. 
+                                                  A 4G coverage rate indicates the proportion of the population with access to a 4G mobile network signal, 
+                                                  while the penetration rate measures the number of active 4G mobile users relative to the total population. 
+                                                  While coverage can be high, the capacity or quality of the network in certain areas might not meet user demand, particularly in rural locations. """
+        additional_context['Health'] = """"""
+        additional_context['Environment'] = """According to the Country Benchmarking Dashboard (CBD), Serbia lacks information on the following Global Climate Change Institution Indicators (GCCIIs): 
+                                               1) Budget guidelines 2) Budget Tracking 3) Public Investment Screening 4) State-owned Enterprises Climate-related Financial Disclosures 5) National Adaptation Plan.
+                                               Developed by the Climate Governance Program at the World Bank, these are important for assessing a country's institutional capacity to address climate change.
+                                               Additionally, Serbia also scores a 2.86 on Accountability, 3 on Organization, 3.52 on Planning, 2.29 on Public Finance, and 2.38 on Subnational Government / State-owned Enterprises 
+                                               (all out of 6) in terms of Climate Change Institutional Asssessments (CCIA) Benchmarking. Here's how they're defined:
+                                               __Organization__: Assesses the regulatory framework for climate change policy, the functional mandates of government agencies, coordination arrangements, and the technical capacity to support climate change policy.
+                                               __Planning__: Evaluates systems for climate change risk and vulnerability assessments, strategies, and plans and the regulatory framework for the climate change planning andpolicy process.
+                                               __Public Finance__: Considers the integration of climate strategies, plans, and policies in fiscal and public financial management (PFM) practices and the mobilization of resources for climate action.
+                                               __Subnational Governments and State-Owned Enterprises__: Examines the treatment of climate change in the intergovernmental system and in the management of state-owned enterprises (SOEs), the capacity of subnational governments (SNGs), and incentives for climate action.
+                                               __Accountability__: Reviews transparency and engagement mechanisms for civil society, the private sector, and other stakeholders and the roles of expert advisory and oversight institutions"""
+        additional_context['Education'] = """"""
+        additional_context['Energy Access'] = """According to the Country Benchmarking Dashboard (CBD), Serbia has a national Electricity Supply Quality score of 91 (out of 100) based on the EU average.
+                                                 Electricity supply quality describes how closely the supplied electrical power matches ideal specifications in terms of voltage, frequency, and waveform.
+                                                 Good power quality ensures consistent voltage within specified limits, a stable frequency close to the rated value, and a smooth sinusoidal waveform. 
+                                                 High power quality is crucial for the proper functioning, efficiency, and safety of electrical and electronic equipment, while poor quality can lead to equipment damage, data loss, disruptions, and increased costs"""
+        additional_context['Sustainable Transport'] = """According to the Country Benchmarking Dashboard (CBD), Serbia has a national Road Quality Score of 42 and Railroad Quality Score of 62 (both out of 100) based on the EU average."""
+        
+
         # SYSTEM MESSAGE
         research_system_message = """
             # Role
@@ -1155,7 +1180,9 @@ def run_analysis(
             # Instructions
             -   You will output only relevant responses 
             -   You will only search for and retain facts
-            -   Provide accurate sources (if available) for your information"""
+            -   Provide accurate sources (if available) for your information
+            
+            """
 
         # FIRST AGENT - General Regional Summary
         task_research = f"""
@@ -1168,6 +1195,8 @@ def run_analysis(
             - Summarize the results in ≤ 150 words.
             - Focus on factual, data-driven insights
             - Maintain consistent structure and terminology
+            - Incorporate the following additional context, only if applicable to the region. If context is contradictory to the regional summary, prioritize the regional summary:
+                {additional_context[prompt_subcategory]}
             """
 
         # Generate and display background research before project recommendations
@@ -1237,6 +1266,8 @@ def run_analysis(
             -   Prioritize projects that leverage existing infrastructure or capabilities
             -   Follow the exact format specified below without deviation
             -   Maintain consistent terminology and structure
+            -   Incorporate the following additional context into the recommendations, if and only if they make sense with the regional analysis and summary, and explicitly explain how it supports the recommendations:
+                {additional_context[prompt_subcategory]}
 
             # Format (Follow Exactly)
             Based on the regional analysis data for {prompt_region}, here are the 5 most viable public investment projects ranked by implementation feasibility:
