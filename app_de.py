@@ -154,7 +154,7 @@ regions_sr = df_indicators['SERBIAN_NAME_CYRILLIC'].unique().tolist()
 averages_df = df_indicators.groupby('year')[df_indicators.columns[4:]].mean().reset_index()
 
 # Load the image
-im = get_image_from_gcs(BUCKET_NAME, "decision_engine/inputs/LDT Decision Engine Icon.png")
+im = get_image_from_gcs(BUCKET_NAME, "decision_engine/inputs/LDT-logo.png")
 
 
 # Convert image to base64 - To be able to add to page
@@ -172,11 +172,12 @@ def get_base64_from_image(image: Image.Image) -> str:
     image.save(buffered, format="PNG")
     return base64.b64encode(buffered.getvalue()).decode()
 
-wb_logo = get_image_from_gcs(BUCKET_NAME, "decision_engine/inputs/World Bank Group Logo.jpg")
-st.sidebar.image(wb_logo, use_container_width =True)
+# wb_logo = get_image_from_gcs(BUCKET_NAME, "decision_engine/inputs/World Bank Group Logo.jpg")
+# st.sidebar.image(wb_logo, use_container_width =True)
 
-pimpam_logo = get_image_from_gcs(BUCKET_NAME, "decision_engine/inputs/PIM-PAM_Logo_V2.png")
+pimpam_logo = get_image_from_gcs(BUCKET_NAME, "decision_engine/inputs/wbg-pimpam.png")
 st.sidebar.image(pimpam_logo, use_container_width =True)
+# st.logo(pimpam_logo, size='large')
 
 with st.sidebar:
     # Global Font Styling
@@ -200,11 +201,14 @@ with st.sidebar:
     st.markdown(
         """
         <div class="sidebar-text">
-            This web app was developed by the World Bank Group as part of the 
-            <a href="https://pim-pam.net/" target="_blank">PimPam Network</a> and the 
-            <a href="https://gpbp-ldt.app/" target="_blank">Local Development Tracking Platform</a> (LDT). 
-            The Decision Engine leverages regional geospatial data developed by the LDT to help policymakers prioritize projects focused on 
-            regional environmental and economic development.
+            The Local Development Tracker - Decision Engine (LDT-DE) harnesses regional geospatial data developed by the LDT to help policymakers prioritize projects focused on 
+            regional environmental and economic development. It was developed by the World Bank Group as part of the 
+            <a href="https://pim-pam.net/" target="_blank">PimPam Network</a>'s Geospatial Planning & Budgeting Platform (GPBP).
+            This tool, in additions, leverages key insights from sister platforms and digital apps on the PimPam GPBP, such as:
+            <li><a href="https://cbd.pim-pam.net/" target="_blank">Country Benchmarking Dashboard</a> (CBD)</li>
+            <li><a href="https://gpbp.adamplatform.eu/" target="_blank">Climate Change Screening Tool</a> (CCS)</li>
+            <li><a href="https://www.figma.com/proto/MRIuLeqyVOFGJQwVi0sVAg/PIA-final?node-id=14101-76623&p=f&t=wMUuiwyzr7W56K36-0&scaling=min-zoom&content-scaling=fixed&page-id=14101%3A64991&starting-point-node-id=14101%3A76623" target="_blank">Public Infrastructure Access Tool</a> (PIA)</li>
+            
         </div>
         """,
         unsafe_allow_html=True
