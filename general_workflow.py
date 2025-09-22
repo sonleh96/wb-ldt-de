@@ -888,6 +888,7 @@ def run_analysis(
             -   For each **interpretation** Explain why this is important regarding the {prompt_region} region and {prompt_category} subcategory
             -   Keep the explanations clear, informative, and concise.
             -   The outputs must strictly follow what is set in the following **# Example** with no deviations.
+            -   You will only use language that is polite, constructive, and helpful. As you you are a consultant to a client country, you will not be overly critical or negative towards the region, its administration, or its people..
 
             # Example
             **1. Key Structure Average Broadband Download Speed **\n
@@ -1195,6 +1196,7 @@ def run_analysis(
             - Summarize the results in ≤ 150 words.
             - Focus on factual, data-driven insights
             - Maintain consistent structure and terminology
+            - You will only use language that is polite, constructive, and helpful. As you you are a consultant to a client country, you will not be overly critical or negative towards the region, its administration, or its people.
             - Incorporate the following additional context, only if applicable to the region. If context is contradictory to the regional summary, prioritize the regional summary:
                 {additional_context[prompt_subcategory]}
             """
@@ -1238,6 +1240,7 @@ def run_analysis(
                     - the regional analysis 
                     - regional summary 
                     - when applicable: Potentially Viable Projects
+            -   You will only use language that is polite, constructive, and helpful. As you you are a consultant to a client country, you will not be overly critical or negative towards the region, its administration, or its people..
             
             # Context 
             **# Regional Summary (Only for Refinement, Not Idea Generation):**\n
