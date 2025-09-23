@@ -177,7 +177,9 @@ def get_base64_from_image(image: Image.Image) -> str:
 
 pimpam_logo = get_image_from_gcs(BUCKET_NAME, "decision_engine/inputs/wbg-pimpam.png")
 st.sidebar.image(pimpam_logo, use_container_width =True)
-# st.logo(pimpam_logo, size='large')
+
+gpbp_logo = get_image_from_gcs(BUCKET_NAME, "decision_engine/inputs/GPBP logo.jpg")
+st.logo(gpbp_logo, size='large')
 
 with st.sidebar:
     # Global Font Styling
@@ -201,10 +203,10 @@ with st.sidebar:
     st.markdown(
         """
         <div class="sidebar-text">
-            The Local Development Tracker - Decision Engine (LDT-DE) harnesses regional geospatial data developed by the LDT to help policymakers prioritize projects focused on 
+            <strong>The Geospatial Planning & Budgeting Platform (GPBP) Local Development Tracker Decision Engine (LDT-DE)</strong> harnesses regional geospatial data developed by the LDT to help policymakers prioritize projects focused on 
             regional environmental and economic development. It was developed by the World Bank Group as part of the 
-            <a href="https://pim-pam.net/" target="_blank">PimPam Network</a>'s Geospatial Planning & Budgeting Platform (GPBP).
-            This tool, in additions, leverages key insights from sister platforms and digital apps on the PimPam GPBP, such as:
+            <a href="https://pim-pam.net/" target="_blank">PimPam Network</a>.
+            This tool not only centralizes and streamlines various remote sensing and geospatial data sources, but also leverages key insights from complementary platforms and digital apps on the PimPam GPBP, such as:
             <li><a href="https://cbd.pim-pam.net/" target="_blank">Country Benchmarking Dashboard</a> (CBD)</li>
             <li><a href="https://gpbp.adamplatform.eu/" target="_blank">Climate Change Screening Tool</a> (CCS)</li>
             <li><a href="https://www.figma.com/proto/MRIuLeqyVOFGJQwVi0sVAg/PIA-final?node-id=14101-76623&p=f&t=wMUuiwyzr7W56K36-0&scaling=min-zoom&content-scaling=fixed&page-id=14101%3A64991&starting-point-node-id=14101%3A76623" target="_blank">Public Infrastructure Access Tool</a> (PIA)</li>
@@ -222,7 +224,7 @@ with st.sidebar:
     st.markdown(
         """
         <div class ="sidebar-text">
-            The following documentation regarding the GPBP LDT Decision Engine is available:
+            The following documentation regarding the GPBP LDT - DE is available:
             <li><a href="https://docs.google.com/presentation/d/19iGMTUGeB7LNRGnFxKTYuRexLW0OjAmn/edit?slide=id.g2e47b9337ae_0_98#slide=id.g2e47b9337ae_0_98" 
                 target="_blank">Pitch Deck</a></li>
             <li><a href="https://docs.google.com/document/d/1eoCPpdTx9z5NI2lX20aAFzLC1_kHGVfd/edit?usp=sharing&ouid=107640506223612923418&rtpof=true&sd=true" target="_blank">EIG in the WeBA6</a></li>
@@ -241,7 +243,7 @@ with st.sidebar:
         """
         <div class="sidebar-text">
             <p>
-                The <strong>LDT Decision Engine</strong> leverages <strong>Generative AI</strong> to analyze data and suggest region-specific and project-level recommendations.
+                The <strong>GPBP LDT - DE</strong> leverages <strong>Generative AI</strong> to analyze data and suggest region-specific and project-level recommendations.
             </p>
             <p>
                 While we strive to deliver <strong>high-quality and accurate outputs</strong>, AI-generated responses may occasionally contain
@@ -314,7 +316,7 @@ df_projects = df_projects.drop(['Estimated Completion', 'Beneficiary Body', 'Tot
 
 # Define header and subheader based on language
 if lang_code == "en":
-    app_title = "LDT Decision Engine"
+    app_title = "GPBP LDT - Decision Engine"
     # Display title with icon
     st.markdown(
         f"<h1 style='display: flex; align-items: center;'>{icon_html}{app_title}</h1>",
@@ -330,7 +332,7 @@ if lang_code == "en":
     run_analysis(df_indicatorlist, df_indicators, averages_df, df_projects, regions, storage_client, language=lang_code)
 
 elif lang_code == "sr":
-    app_title = "LDT мотор за одлучивање"
+    app_title = "GPBP LDT - мотор за одлучивање"
     app_subheader = "Здраво, могу да извршим аутоматизовану анализу регионалних перформанси на основу тема које вас занимају. атим могу да дам препоруке за јавне инвестиције на основу анализе"
     # Display subheader
     # Display title with icon
