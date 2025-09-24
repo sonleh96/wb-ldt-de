@@ -1,12 +1,12 @@
 #Import required libraries
 import os
-from typing import Dict, Any, Optional
+from typing import Any
 import base64
 from io import BytesIO
+from datetime import datetime
 
 import streamlit as st
 import pandas as pd
-from openai import OpenAI
 from google.cloud import storage
 from google.oauth2 import service_account
 from PIL import Image
@@ -41,8 +41,8 @@ openai_api_key = os.getenv('openai_apikey')
 
 # credentials = service_account.Credentials.from_service_account_info(creds_info)
 credentials = service_account.Credentials.from_service_account_file(
-    r"D:\Work\WB\LDT\credentials\wb-ldt-948953b71056.json"
-    # "/Users/sonle/Documents/work/WB/LDT_DecisionEngine/credentials/wb-ldt-948953b71056.json"
+    # r"D:\Work\WB\LDT\credentials\wb-ldt-948953b71056.json"
+    "/Users/sonle/Documents/work/WB/LDT_DecisionEngine/credentials/wb-ldt-948953b71056.json"
 )
 storage_client = storage.Client(credentials=credentials)
 
@@ -172,14 +172,85 @@ def get_base64_from_image(image: Image.Image) -> str:
     image.save(buffered, format="PNG")
     return base64.b64encode(buffered.getvalue()).decode()
 
-# wb_logo = get_image_from_gcs(BUCKET_NAME, "decision_engine/inputs/World Bank Group Logo.jpg")
-# st.sidebar.image(wb_logo, use_container_width =True)
+@st.cache_data
+def prepare_dataset_download(df: pd.DataFrame, file_format: str = "csv") -> bytes:
+    """
+    Convert DataFrame to downloadable format.
+    
+    Args:
+        df: The dataframe to convert
+        file_format: Either 'csv' or 'excel'
+    
+    Returns:
+        bytes: File data ready for download
+    """
+    buffer = BytesIO()
+    
+    if file_format.lower() == "csv":
+        df.to_csv(buffer, index=False, encoding='utf-8')
+        buffer.seek(0)
+        return buffer.getvalue()
+    elif file_format.lower() == "excel":
+        df.to_excel(buffer, index=False, engine='openpyxl')
+        buffer.seek(0)
+        return buffer.getvalue()
+    else:
+        raise ValueError(f"Unsupported file format: {file_format}")
+
 
 pimpam_logo = get_image_from_gcs(BUCKET_NAME, "decision_engine/inputs/wbg-pimpam.png")
 st.sidebar.image(pimpam_logo, use_container_width =True)
 
 gpbp_logo = get_image_from_gcs(BUCKET_NAME, "decision_engine/inputs/GPBP logo.jpg")
 st.logo(gpbp_logo, size='large')
+
+# Language setup (moved here to be available in sidebar)
+languages = {"English": "en", "Serbian": "sr"}
+
+# Get current language from query params (Streamlit 1.32+ style)
+query_params = st.query_params
+current_lang_code = query_params.get("lang", ["en"])[0]
+
+# Reverse map: 'en' -> 'English'
+reverse_languages = {v: k for k, v in languages.items()}
+default_language = reverse_languages.get(current_lang_code, "English")
+
+# Define language switch handler
+def set_language() -> None:
+    """
+    Handle language switching in the Streamlit app.
+    
+    This function updates the query parameters and session state
+    when the language selection changes, while preserving other
+    session state variables.
+    """
+    if "selected_language" in st.session_state:
+        new_lang_code = languages[st.session_state["selected_language"]]
+        st.query_params["lang"] = new_lang_code
+
+        # Only reset category if it's not already set for the new language
+        # This prevents unnecessary resets that cause subheaders to disappear
+        if new_lang_code == "en" and "option_category" not in st.session_state:
+            st.session_state.option_category = "Education"
+        elif new_lang_code == "sr" and "option_category" not in st.session_state:
+            st.session_state.option_category = "Образовање"
+        
+        # Preserve other session state variables that should persist across language changes
+        # Don't clear analysis flags or results unless explicitly needed
+
+# Language selection radio
+sel_lang = st.radio(
+    "Language",
+    options=list(languages.keys()),
+    index=list(languages.keys()).index(default_language),
+    horizontal=True,
+    on_change=set_language,  # ← this triggers your reset
+    key="selected_language",
+)
+
+# Display language choice and code
+st.markdown(f"Selected Language: {sel_lang}")
+lang_code = languages[sel_lang]
 
 with st.sidebar:
     # Global Font Styling
@@ -237,6 +308,66 @@ with st.sidebar:
     # Divider for separation
     st.markdown("<hr style='border: 1px solid #ccc;'>", unsafe_allow_html=True)
 
+    # Data Download Section
+    st.write("### 📊 Data Download")
+    st.markdown(
+        """
+        <div class="sidebar-text">
+            Download the complete indicator dataset used in this analysis.
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # Format selection
+    download_format = st.selectbox(
+        "Select format:",
+        ["CSV", "Excel"],
+        key="download_format"
+    )
+
+    # Download button with multilingual support
+    if lang_code == "en":
+        download_label = f"📥 Download Full Dataset ({download_format})"
+        download_help = "Download the complete regional indicator dataset"
+        filename_prefix = "full_indicator_dataset"
+    else:  # Serbian
+        download_label = f"📥 Преузми комплетан скуп података ({download_format})"
+        download_help = "Преузмите комплетан скуп регионалних показатеља"
+        filename_prefix = "kompletan_skup_podataka_indikatora"
+
+    # Generate filename with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    if download_format.lower() == "csv":
+        filename = f"{filename_prefix}_{timestamp}.csv"
+        mime_type = "text/csv"
+    else:
+        filename = f"{filename_prefix}_{timestamp}.xlsx"
+        mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+    # Download button
+    st.download_button(
+        label=download_label,
+        data=prepare_dataset_download(df_indicators, download_format.lower()),
+        file_name=filename,
+        mime=mime_type,
+        help=download_help,
+        use_container_width=True
+    )
+
+    # Add dataset info
+    with st.expander("ℹ️ Dataset Information" if lang_code == "en" else "ℹ️ Информације о скупу података"):
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Regions", len(df_indicators['ENGLISH_NAME'].unique()))
+            st.metric("Years", len(df_indicators['year'].unique()))
+        with col2:
+            st.metric("Indicators", len(df_indicators.columns) - 4)  # Subtract non-indicator columns
+            st.metric("Total Records", len(df_indicators))
+
+    # Divider for separation
+    st.markdown("<hr style='border: 1px solid #ccc;'>", unsafe_allow_html=True)
+
     # Disclaimer Section
     st.write("### ⚠️ Disclaimer")
     st.markdown(
@@ -259,53 +390,6 @@ with st.sidebar:
     )
 
 
-languages = {"English": "en", "Serbian": "sr"}
-
-# Get current language from query params (Streamlit 1.32+ style)
-query_params = st.query_params
-current_lang_code = query_params.get("lang", ["en"])[0]
-
-# Reverse map: 'en' -> 'English'
-reverse_languages = {v: k for k, v in languages.items()}
-default_language = reverse_languages.get(current_lang_code, "English")
-
-# Define language switch handler
-def set_language() -> None:
-    """
-    Handle language switching in the Streamlit app.
-    
-    This function updates the query parameters and session state
-    when the language selection changes, while preserving other
-    session state variables.
-    """
-    if "selected_language" in st.session_state:
-        new_lang_code = languages[st.session_state["selected_language"]]
-        st.query_params["lang"] = new_lang_code
-
-        # Only reset category if it's not already set for the new language
-        # This prevents unnecessary resets that cause subheaders to disappear
-        if new_lang_code == "en" and "option_category" not in st.session_state:
-            st.session_state.option_category = "Education"
-        elif new_lang_code == "sr" and "option_category" not in st.session_state:
-            st.session_state.option_category = "Образовање"
-        
-        # Preserve other session state variables that should persist across language changes
-        # Don't clear analysis flags or results unless explicitly needed
-
-# Language selection radio
-sel_lang = st.radio(
-    "Language",
-    options=list(languages.keys()),
-    index=list(languages.keys()).index(default_language),
-    horizontal=True,
-    on_change=set_language,  # ← this triggers your reset
-    key="selected_language",
-)
-
-
-# Display language choice and code
-st.markdown(f"Selected Language: {sel_lang}")
-lang_code = languages[sel_lang]
 
 
 # Convert and embed the image
