@@ -19,3 +19,6 @@ docs
 .env.local
 
 .env.development.local
+
+
+research.ipynb

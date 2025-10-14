@@ -1,0 +1,185 @@
+# app_config.py
+
+# --- CONSTANTS ---
+BUCKET_NAME = "wb-ldt"
+CACHE_PATH = "decision_engine/cached_responses"
+CACHE_VERSION = "1.0"
+SLEEP_TIME = 0 # Can be increased to simulate processing time for cached responses
+
+# --- CATEGORY AND INDICATOR MAPPINGS ---
+CATEGORY_OPTIONS_EN = ["Education", "Energy Access", "Environment", "Digitalization", "Health", "Sustainable Transport"]
+CATEGORY_OPTIONS_SR = ["Образовање", "Приступ енергији", "Животна средина", "Дигитализација", "Здравље", "Одрживи транспорт"]
+
+CATEGORY_SR_TO_EN = dict(zip(CATEGORY_OPTIONS_SR, CATEGORY_OPTIONS_EN))
+CATEGORY_EN_TO_SR = dict(zip(CATEGORY_OPTIONS_EN, CATEGORY_OPTIONS_SR))
+
+CATEGORY_INDICATOR_DICT = {
+    'Education': [
+        "Accessibility to School Services (unit: %)",
+        "Key Structures without Internet Access (unit: %)",
+        "Key Structure Average Broadband Download Speed (unit: megabites per second)"
+    ],
+    "Energy Access": [
+        "Nighttime Luminosity (unit: nWatts/(cm2 x sr)"
+    ],
+    "Environment": [
+        "Emissions from all sources (unit: kgCO2e/kg)",
+        "Emissions from Coal Power Plants (unit: kgCO2e/kg)",
+        "Agriculture Emissions (unit: kgCO2e/kg)",
+        "Forestry & Land Use Emissions (unit: kgCO2e/kg)",
+        "PM 2.5 concentration (unit: µg/m3)",
+        "NO2 concentration (unit: µg/m3)"
+    ],
+    'Digitalization': [
+        "Key Structure Average Broadband Download Speed (unit: megabites per second)",
+        "Key Structures without Internet Access (unit: %)",
+        "Average Cellular Download Speed (unit: megabites per second)"
+    ],
+    'Health': [
+        "Accessibility to Health Services (unit: %)",
+        "Diversity of Health Services",
+        "PM 2.5 concentration (unit: µg/m3)",
+        "NO2 concentration (unit: µg/m3)",
+        "Key Structures without Internet Access (unit: %)"
+    ],
+    'Sustainable Transport': [
+        "Railway flood risk per capita (unit: km per capita)",
+        "Road flood risk per capita (unit: km per capita)",
+        "Railway heatwave risk per capita (unit: km per capita)",
+        "Road heatwave risk per capita (unit: km per capita)"
+    ]
+}
+
+# --- UI TEXT (Internationalization) ---
+UI_TEXT = {
+    "en": {
+        "app_title": "GPBP LDT - Decision Engine",
+        "app_subheader": "Hello, I can produce an automated analysis of regional performances based on the themes you're interested in. Then, I can make public investment recommendations based on the analysis.",
+        "language": "Language",
+        "selected_language": "Selected Language: {lang}",
+        "select_region": "Select a Region:",
+        "select_category": "Select a category:",
+        "region_selected": "Region selected: {region}",
+        "category_selected": "Category selected: {category}",
+        "start_button": "Let's get started",
+        "new_analysis_button": "New Analysis",
+        "regional_analysis_button": "Let's conduct a Regional Analysis",
+        "project_recommendations_button": "What Project Recommendations Follow?",
+        "relevant_indicators_header": "Relevant Indicators",
+        "regional_analysis_header": "Comprehensive Regional Analysis",
+        "project_recommendations_header": "Initial Project Recommendations",
+        "final_projects_header": "Final Project Selections",
+        "background_research_header": "Background Research",
+        "status_starting_analysis": "Starting analysis for {category} in {region}...",
+        "status_conducting_regional": "Conducting regional analysis...",
+        "status_background_research": "Doing some background research on {region}... This may take a moment.",
+        "status_generating_projects": "Generating project recommendations... This may take a moment.",
+        "status_finalizing_projects": "Finalizing project selections...",
+        "status_matching_projects": "Matching with similar projects within the region... This may take a moment.",
+        "status_process_complete": "Process Completed!",
+    },
+    "sr": {
+        "app_title": "GPBP LDT - мотор за одлучивање",
+        "app_subheader": "Здраво, могу да извршим аутоматизовану анализу регионалних перформанси на основу тема које вас занимају. атим могу да дам препоруке за јавне инвестиције на основу анализе",
+        "language": "Language", # Kept in English for st.radio label
+        "selected_language": "Одабрани језик: {lang}",
+        "select_region": "Изаберите регион:",
+        "select_category": "Изаберите категорију:",
+        "region_selected": "Изабран је регион: {region}",
+        "category_selected": "Категорија је изабрана: {category}",
+        "start_button": "Хајде да почнемо",
+        "new_analysis_button": "Нова анализа",
+        "regional_analysis_button": "Хајде да урадимо регионалну анализу",
+        "project_recommendations_button": "Које препоруке за пројекте следе?",
+        "relevant_indicators_header": "Релевантни индикатори",
+        "regional_analysis_header": "Свеобухватна регионална анализа",
+        "project_recommendations_header": "Прве препоруке за пројекте",
+        "final_projects_header": "Коначни избор пројеката",
+        "background_research_header": "Истраживање позадине",
+        "status_starting_analysis": "Почиње анализа категорије {category} у региону {region}...",
+        "status_conducting_regional": "Извођење регионалне анализе...",
+        "status_background_research": "Проводим нека истраживања о {region}... Ово може потрајати неколико тренутака.",
+        "status_generating_projects": "Генерисање препорука пројеката... Ово може потрајати неколико тренутака.",
+        "status_finalizing_projects": "Финализовање избора пројеката...",
+        "status_matching_projects": "Усклађивање са сличним пројектима у региону... Ово може потрајати неколико тренутака.",
+        "status_process_complete": "Процес је завршен!",
+    }
+}
+
+# --- LLM PROMPTS ---
+
+SYSTEM_MESSAGE = """
+# Role
+You're a data scientist with domain expertise in local governance.
+
+# Instructions
+* Utilize data to help regional policy makers assess the environmental and economic performance of their regions using a set of pre-defined indicators.
+* Compare the performance of each indicator to its national average of the year in order to make logical conclusions. Some of the indicators are available at a multi-year basis.
+* The analysis must be as reasonable as possible. Avoid overly ambitious statements.
+
+# Context:
+This is what each indicator means:
+-   Accessibility to Health Services (unit: %): Measures the percentage of citizens with healthcare access within a 60-minute walking distance.
+-   Accessibility to School Services (unit: %): Measures the percentage of citizens with school access within a 60-minute walking distance.
+-   Diversity of Health Services: Evaluates healthcare service diversity within a municipality using the Shannon Diversity Index.
+-   CO2 Equivalent Emissions from all sources (unit: kgCO2e/kg): Quantifies total emissions, in terms of CO2, at the municipal level from all sources.
+-   Methane Emissions from all sources (kg): Quantifies total methane emissions at the municipal level from all sources.
+-   Emissions from Coal Power Plants (unit: kgCO2e/kg): Quantifies emissions from coal power plants specifically, aggregating data by emission type.
+-   Nighttime Luminosity (unit: nWatts/(cm2 x sr): Measures artificial nighttime light as an measurement of both the degree of electrification and economic development indicator using NASA's Black Marble data.
+-   Key Structure Average Broadband Download Speed (unit: megabites per second): Calculates the average broadband speed for key structures like schools and hospitals.
+-   Average Cellular Download Speed (unit: megabites per second): Measures average mobile download speeds across sub-national regions.
+-   Key Structures without Internet Access (unit: %): Shows the percentage of hospitals and schools lacking broadband internet access.
+-   Road flood risk per capita (unit: km per capita): Assesses road exposure to 1-in-100-year flood risks per capita for climate adaptation planning. 
+-   Road heatwave risk per capita (unit: km per capita): Measures road length at risk from heatwaves per capita in high-emission climate scenarios.
+-   Railway flood risk per capita (unit: km per capita): Assesses railway exposure to 1-in-100-year flood risks per capita.
+-   Railway heatwave risk per capita (unit: km per capita): Measures railway length at risk from heatwaves per capita in high-emission scenarios.
+-   Road flood risk (unit: km): Assesses road exposure to 1-in-100-year flood risks for climate adaptation planning. 
+-   Road heatwave risk (unit: km): Measures road length at risk from heatwaves in high-emission climate scenarios.
+-   Railway flood risk (unit: km): Assesses railway exposure to 1-in-100-year flood risks.
+-   Railway heatwave risk (unit: km): Measures railway length at risk from heatwaves in high-emission scenarios.
+-   PM 2.5 concentration (unit: µg/m3): Calculates average annual PM 2.5 concentration in sub-national regions, a key health risk factor.
+-   PM 10 concentration (unit: µg/m3): Calculates average annual PM 10 concentration in sub-national regions, a key health risk factor.
+-   NO2 concentration (unit: µg/m3): Calculates average annual NO2 concentration in sub-national regions, a key health risk factor.
+-   Agriculture Emissions (unit: kgCO2e/kg): Quantifies total emissions and emission factors at the municipal level from agriculture sources.
+-   Forestry & Land Use Emissions (unit: kgCO2e/kg): Quantifies total emissions and emission factors at the municipal level from forestry and land-use sources.
+    
+Each indicator may fall under one or more of the following subcategories:
+-   Education: Concerns the degree of which the region's population has access to schools and how much access the region's schools has to internet infrastructure for a given year.
+-   Energy Access: Concerns how much the region has access to energy sources and electric power.
+-   Environment: May include areas such as air pollution and emissions
+-   Hospitals: Concerns the degree of which the region's population has access to hospitals and how much access the region's hospitals has to internet infrastructure for a given year.
+-   Digitalization: Concerns the development of the region's internet infrastructure, including both broadband and mobile internet. 
+-   Sustainable Transport: Concerns current development status and potential climate risks faced by of the region's existing land infrastructure such as railways and roads. 
+"""
+
+TRANSLATION_SYSTEM_PROMPT = """
+# Role: You are a professional English-to-Serbian public sector translation assistant
+
+# Instructions
+-   All translations must be outputed in the form of the Cyrillic alphabet
+
+"""
+
+ADDITIONAL_CONTEXT = {
+    'Digitalization': """According to the Country Benchmarking Dashboard (CBD), Serbia has a national 4G Coverage Score of 98 and 4G Penetration Score of 22 (both out of 100) based on the EU average. 
+                         A 4G coverage rate indicates the proportion of the population with access to a 4G mobile network signal, 
+                         while the penetration rate measures the number of active 4G mobile users relative to the total population. 
+                         While coverage can be high, the capacity or quality of the network in certain areas might not meet user demand, particularly in rural locations. """,
+    'Health': """""",
+    'Environment': """According to the Country Benchmarking Dashboard (CBD), Serbia lacks information on the following Global Climate Change Institution Indicators (GCCIIs): 
+                      1) Budget guidelines 2) Budget Tracking 3) Public Investment Screening 4) State-owned Enterprises Climate-related Financial Disclosures 5) National Adaptation Plan.
+                      Developed by the Climate Governance Program at the World Bank, these are important for assessing a country's institutional capacity to address climate change.
+                      Additionally, Serbia also scores a 2.86 on Accountability, 3 on Organization, 3.52 on Planning, 2.29 on Public Finance, and 2.38 on Subnational Government / State-owned Enterprises 
+                      (all out of 6) in terms of Climate Change Institutional Asssessments (CCIA) Benchmarking. Here's how they're defined:
+                      __Organization__: Assesses the regulatory framework for climate change policy, the functional mandates of government agencies, coordination arrangements, and the technical capacity to support climate change policy.
+                      __Planning__: Evaluates systems for climate change risk and vulnerability assessments, strategies, and plans and the regulatory framework for the climate change planning andpolicy process.
+                      __Public Finance__: Considers the integration of climate strategies, plans, and policies in fiscal and public financial management (PFM) practices and the mobilization of resources for climate action.
+                      __Subnational Governments and State-Owned Enterprises__: Examines the treatment of climate change in the intergovernmental system and in the management of state-owned enterprises (SOEs), the capacity of subnational governments (SNGs), and incentives for climate action.
+                      __Accountability__: Reviews transparency and engagement mechanisms for civil society, the private sector, and other stakeholders and the roles of expert advisory and oversight institutions""",
+    'Education': """""",
+    'Energy Access': """According to the Country Benchmarking Dashboard (CBD), Serbia has a national Electricity Supply Quality score of 91 (out of 100) based on the EU average.
+                        Electricity supply quality describes how closely the supplied electrical power matches ideal specifications in terms of voltage, frequency, and waveform.
+                        Good power quality ensures consistent voltage within specified limits, a stable frequency close to the rated value, and a smooth sinusoidal waveform. 
+                        High power quality is crucial for the proper functioning, efficiency, and safety of electrical and electronic equipment, while poor quality can lead to equipment damage, data loss, disruptions, and increased costs""",
+    'Sustainable Transport': """According to the Country Benchmarking Dashboard (CBD), Serbia has a national Road Quality Score of 42 and Railroad Quality Score of 62 (both out of 100) based on the EU average."""
+}
