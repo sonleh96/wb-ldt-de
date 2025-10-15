@@ -32,7 +32,7 @@ st.set_page_config(
 
 # --- State Management ---
 if 'stage' not in st.session_state:
-    st.session_state.stage = 0 # 0: Start, 1: Indicators done, 2: Regional done, 3: Projects done
+    st.session_state.stage = 0 # 0: Start, 1: Indicators, 2: Regional, 3: Projects done
 
 # --- Initialization ---
 @st.cache_resource
@@ -186,12 +186,15 @@ if st.session_state.stage >= 2:
 
     if st.session_state.stage == 2:
         if st.button(ui_text['project_recommendations_button'], use_container_width=True):
+            st.session_state.stage = 3 # Mark stage as "in progress" to hide the button on rerun
+            
             region = st.session_state.option_region
             category = st.session_state.option_category
             en_category = cache_manager._normalize_category_name(category)
             en_region = cache_manager._normalize_region_name(region)
-
-            # This stage has multiple steps, so we show progress
+            
+            # --- Run and Display Background Research ---
+            st.header(ui_text['background_research_header'])
             with st.spinner(ui_text['status_background_research'].format(region=region)):
                 cached_en = cache_manager.get_cached_response(region, category, 'research', 'en')
                 if cached_en:
@@ -200,7 +203,15 @@ if st.session_state.stage >= 2:
                     regional_summary_en = get_background_research(openai_client, en_region, en_category)
                     cache_manager.save_response(region, category, 'research', regional_summary_en, 'en')
                 st.session_state.regional_summary_en = regional_summary_en
+            
+            # Display immediately
+            summary = regional_summary_en
+            if lang_code == 'sr':
+                summary = translate_en_to_sr(openai_client, summary)
+            st.markdown(summary)
 
+            # --- Run and Display Initial Recommendations ---
+            st.header(ui_text['project_recommendations_header'])
             with st.spinner(ui_text['status_generating_projects']):
                 cached_en = cache_manager.get_cached_response(region, category, 'initial_recs', 'en')
                 if cached_en:
@@ -210,6 +221,14 @@ if st.session_state.stage >= 2:
                     cache_manager.save_response(region, category, 'initial_recs', initial_recs_en, 'en')
                 st.session_state.initial_recs_en = initial_recs_en
 
+            # Display immediately
+            initial_recs = initial_recs_en
+            if lang_code == 'sr':
+                initial_recs = translate_en_to_sr(openai_client, initial_recs)
+            st.markdown(initial_recs)
+
+            # --- Run and Display Final Projects ---
+            st.header(ui_text['final_projects_header'])
             with st.spinner(ui_text['status_matching_projects']):
                 cached_en = cache_manager.get_cached_response(region, category, 'final_projects', 'en')
                 if cached_en:
@@ -220,11 +239,16 @@ if st.session_state.stage >= 2:
                     final_projects_en = get_final_projects(openai_client, en_region, en_category, st.session_state.initial_recs_en, json_projects)
                     cache_manager.save_response(region, category, 'final_projects', final_projects_en, 'en')
                 st.session_state.final_projects_en = final_projects_en
-            
-            st.session_state.stage = 3
-            st.rerun()
 
-# --- Display Project Recommendations ---
+            # Display immediately
+            final_projects = final_projects_en
+            if lang_code == 'sr':
+                final_projects = translate_en_to_sr(openai_client, final_projects)
+            st.markdown(final_projects)
+            
+            st.rerun() # Rerun once at the end to finalize the state
+
+# --- Display Project Recommendations (on subsequent reruns) ---
 if st.session_state.stage >= 3:
     # Background Research
     st.header(ui_text['background_research_header'])
