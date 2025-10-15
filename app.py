@@ -30,6 +30,10 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# --- State Management ---
+if 'stage' not in st.session_state:
+    st.session_state.stage = 0 # 0: Start, 1: Indicators done, 2: Regional done, 3: Projects done
+
 # --- Initialization ---
 @st.cache_resource
 def init_gcs_client():
@@ -100,72 +104,178 @@ ui_text = UI_TEXT[lang_code]
 render_main_interface(lang_code, regions, categories)
 
 # --- Main App Logic ---
-def run_full_analysis():
-    """Orchestrates the full analysis pipeline."""
-    region = st.session_state.option_region
-    category = st.session_state.option_category
-    
-    # Get English names for processing
-    en_category = cache_manager._normalize_category_name(category)
-    en_region = cache_manager._normalize_region_name(region)
 
-    # --- 1. Indicator Analysis ---
-    st.header(ui_text['relevant_indicators_header'])
-    with st.status(ui_text['status_starting_analysis'].format(category=category, region=region), expanded=True):
+# --- Stage 0 -> 1: Indicator Analysis ---
+if st.session_state.stage == 0:
+    if st.button(ui_text['start_button'], use_container_width=True):
+        en_category = cache_manager._normalize_category_name(st.session_state.option_category)
+        
+        # Indicator analysis is deterministic text, no LLM, so no caching needed here.
         indicator_response_en, code_list, code_name_dict = get_indicator_analysis(df_indicatorlist, en_category)
-        if lang_code == 'sr':
-            indicator_response = translate_en_to_sr(openai_client, indicator_response_en)
-        else:
-            indicator_response = indicator_response_en
-        st.markdown(indicator_response)
+        
+        # Store results in session state
+        st.session_state.indicator_response_en = indicator_response_en
+        st.session_state.code_list = code_list
+        st.session_state.code_name_dict = code_name_dict
+        
+        st.session_state.stage = 1
+        st.rerun()
 
-    # --- 2. Regional Analysis ---
+# --- Display Indicator Analysis & Trigger for Stage 2 ---
+if st.session_state.stage >= 1:
+    st.header(ui_text['relevant_indicators_header'])
+    
+    indicator_response_en = st.session_state.indicator_response_en
+    
+    # Handle translation and caching of translation
+    if lang_code == 'sr':
+        cached_sr = cache_manager.get_cached_response(st.session_state.option_region, st.session_state.option_category, 'indicators', 'sr')
+        if cached_sr:
+            indicator_response = cached_sr['content']
+        else:
+            with st.spinner("Translating..."):
+                indicator_response = translate_en_to_sr(openai_client, indicator_response_en)
+                cache_manager.save_response(st.session_state.option_region, st.session_state.option_category, 'indicators', indicator_response, 'sr')
+    else:
+        indicator_response = indicator_response_en
+        
+    st.markdown(indicator_response)
+
+    if st.session_state.stage == 1:
+        if st.button(ui_text['regional_analysis_button'], use_container_width=True):
+            region = st.session_state.option_region
+            category = st.session_state.option_category
+            en_category = cache_manager._normalize_category_name(category)
+            en_region = cache_manager._normalize_region_name(region)
+
+            with st.spinner(ui_text['status_conducting_regional']):
+                # Check cache for English version first
+                cached_en = cache_manager.get_cached_response(region, category, 'regional', 'en')
+                if cached_en:
+                    regional_analysis_en = cached_en['content']
+                else:
+                    # Generate and save to cache if not found
+                    comparison_text = prepare_regional_analysis_data(df_indicators, averages_df, en_region, st.session_state.code_list, st.session_state.code_name_dict)
+                    regional_analysis_en = get_regional_narrative(openai_client, en_region, en_category, comparison_text)
+                    cache_manager.save_response(region, category, 'regional', regional_analysis_en, 'en')
+                
+                st.session_state.regional_analysis_en = regional_analysis_en
+            
+            st.session_state.stage = 2
+            st.rerun()
+
+# --- Display Regional Analysis & Trigger for Stage 3 ---
+if st.session_state.stage >= 2:
     st.header(ui_text['regional_analysis_header'])
-    with st.status(ui_text['status_conducting_regional'], expanded=True):
-        comparison_text = prepare_regional_analysis_data(df_indicators, averages_df, en_region, code_list, code_name_dict)
-        regional_analysis_en = get_regional_narrative(openai_client, en_region, en_category, comparison_text)
-        if lang_code == 'sr':
-            regional_analysis = translate_en_to_sr(openai_client, regional_analysis_en)
+    
+    regional_analysis_en = st.session_state.regional_analysis_en
+    
+    # Handle translation and caching of translation
+    if lang_code == 'sr':
+        cached_sr = cache_manager.get_cached_response(st.session_state.option_region, st.session_state.option_category, 'regional', 'sr')
+        if cached_sr:
+            regional_analysis = cached_sr['content']
         else:
-            regional_analysis = regional_analysis_en
-        st.markdown(regional_analysis)
+            with st.spinner("Translating..."):
+                regional_analysis = translate_en_to_sr(openai_client, regional_analysis_en)
+                cache_manager.save_response(st.session_state.option_region, st.session_state.option_category, 'regional', regional_analysis, 'sr')
+    else:
+        regional_analysis = regional_analysis_en
 
-    # --- 3. Project Recommendations ---
+    st.markdown(regional_analysis)
+
+    if st.session_state.stage == 2:
+        if st.button(ui_text['project_recommendations_button'], use_container_width=True):
+            region = st.session_state.option_region
+            category = st.session_state.option_category
+            en_category = cache_manager._normalize_category_name(category)
+            en_region = cache_manager._normalize_region_name(region)
+
+            # This stage has multiple steps, so we show progress
+            with st.spinner(ui_text['status_background_research'].format(region=region)):
+                cached_en = cache_manager.get_cached_response(region, category, 'research', 'en')
+                if cached_en:
+                    regional_summary_en = cached_en['content']
+                else:
+                    regional_summary_en = get_background_research(openai_client, en_region, en_category)
+                    cache_manager.save_response(region, category, 'research', regional_summary_en, 'en')
+                st.session_state.regional_summary_en = regional_summary_en
+
+            with st.spinner(ui_text['status_generating_projects']):
+                cached_en = cache_manager.get_cached_response(region, category, 'initial_recs', 'en')
+                if cached_en:
+                    initial_recs_en = cached_en['content']
+                else:
+                    initial_recs_en = get_initial_recommendations(openai_client, en_region, en_category, st.session_state.regional_analysis_en, st.session_state.regional_summary_en)
+                    cache_manager.save_response(region, category, 'initial_recs', initial_recs_en, 'en')
+                st.session_state.initial_recs_en = initial_recs_en
+
+            with st.spinner(ui_text['status_matching_projects']):
+                cached_en = cache_manager.get_cached_response(region, category, 'final_projects', 'en')
+                if cached_en:
+                    final_projects_en = cached_en['content']
+                else:
+                    filtered_projects = filter_projects(df_projects, en_category)
+                    json_projects = filtered_projects.to_json(orient="records")
+                    final_projects_en = get_final_projects(openai_client, en_region, en_category, st.session_state.initial_recs_en, json_projects)
+                    cache_manager.save_response(region, category, 'final_projects', final_projects_en, 'en')
+                st.session_state.final_projects_en = final_projects_en
+            
+            st.session_state.stage = 3
+            st.rerun()
+
+# --- Display Project Recommendations ---
+if st.session_state.stage >= 3:
     # Background Research
     st.header(ui_text['background_research_header'])
-    with st.status(ui_text['status_background_research'].format(region=region), expanded=True):
-        regional_summary_en = get_background_research(openai_client, en_region, en_category)
-        if lang_code == 'sr':
-            regional_summary = translate_en_to_sr(openai_client, regional_summary_en)
+    summary_en = st.session_state.regional_summary_en
+    if lang_code == 'sr':
+        cached_sr = cache_manager.get_cached_response(st.session_state.option_region, st.session_state.option_category, 'research', 'sr')
+        if cached_sr:
+            summary = cached_sr['content']
         else:
-            regional_summary = regional_summary_en
-        st.markdown(regional_summary)
+            with st.spinner("Translating..."):
+                summary = translate_en_to_sr(openai_client, summary_en)
+                cache_manager.save_response(st.session_state.option_region, st.session_state.option_category, 'research', summary, 'sr')
+    else:
+        summary = summary_en
+    st.markdown(summary)
 
     # Initial Recommendations
     st.header(ui_text['project_recommendations_header'])
-    with st.status(ui_text['status_generating_projects'], expanded=True):
-        initial_recs_en = get_initial_recommendations(openai_client, en_region, en_category, regional_analysis_en, regional_summary_en)
-        if lang_code == 'sr':
-            initial_recs = translate_en_to_sr(openai_client, initial_recs_en)
+    initial_recs_en = st.session_state.initial_recs_en
+    if lang_code == 'sr':
+        cached_sr = cache_manager.get_cached_response(st.session_state.option_region, st.session_state.option_category, 'initial_recs', 'sr')
+        if cached_sr:
+            initial_recs = cached_sr['content']
         else:
-            initial_recs = initial_recs_en
-        st.markdown(initial_recs)
+            with st.spinner("Translating..."):
+                initial_recs = translate_en_to_sr(openai_client, initial_recs_en)
+                cache_manager.save_response(st.session_state.option_region, st.session_state.option_category, 'initial_recs', initial_recs, 'sr')
+    else:
+        initial_recs = initial_recs_en
+    st.markdown(initial_recs)
 
     # Final Project Selections
     st.header(ui_text['final_projects_header'])
-    with st.status(ui_text['status_matching_projects'], expanded=True):
-        filtered_projects = filter_projects(df_projects, en_category)
-        json_projects = filtered_projects.to_json(orient="records")
-        final_projects_en = get_final_projects(openai_client, en_region, en_category, initial_recs_en, json_projects)
-        if lang_code == 'sr':
-            final_projects = translate_en_to_sr(openai_client, final_projects_en)
+    final_projects_en = st.session_state.final_projects_en
+    if lang_code == 'sr':
+        cached_sr = cache_manager.get_cached_response(st.session_state.option_region, st.session_state.option_category, 'final_projects', 'sr')
+        if cached_sr:
+            final_projects = cached_sr['content']
         else:
-            final_projects = final_projects_en
-        st.markdown(final_projects)
+            with st.spinner("Translating..."):
+                final_projects = translate_en_to_sr(openai_client, final_projects_en)
+                cache_manager.save_response(st.session_state.option_region, st.session_state.option_category, 'final_projects', final_projects, 'sr')
+    else:
+        final_projects = final_projects_en
+    st.markdown(final_projects)
 
-
-if st.button(ui_text['start_button']):
-    st.session_state.start_analysis = True
-
-if 'start_analysis' in st.session_state and st.session_state.start_analysis:
-    run_full_analysis()
+# --- New Analysis Button ---
+if st.session_state.stage > 0:
+    if st.button(ui_text['new_analysis_button'], use_container_width=True):
+        # Clear all session state except for language selection
+        for key in st.session_state.keys():
+            if key != 'selected_language':
+                del st.session_state[key]
+        st.rerun()
