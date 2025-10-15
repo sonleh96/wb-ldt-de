@@ -83,7 +83,12 @@ def get_background_research(client: OpenAI, region: str, subcategory: str) -> st
     research_messages = [{"role": "system", "content": research_system_message}, 
                          {"role": "user", "content": task_research}]
     research_response = client.chat.completions.create(
-        model="gpt-4.1", messages=research_messages, temperature=0.1, seed=42, max_tokens=200
+        model="gpt-4.1", 
+        messages=research_messages, 
+        temperature=0.1, 
+        seed=42, 
+        max_tokens=200,
+        tools=[{"type": "web_search"}]
     )
     return research_response.choices[0].message.content
 
