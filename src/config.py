@@ -9,6 +9,10 @@ PROJECT_DETAILS_TTL_HOURS = 48
 # Set to False to disable TTL expiration (cache never expires). Set True to enforce TTL.
 PROJECT_DETAILS_TTL_ENABLED = False
 
+# --- LLM Model configuration ---
+# Centralize model/version and generation settings to ensure deterministic formatting
+PROJECT_REVIEW_MODEL = "gpt-5"
+
 # --- CATEGORY AND INDICATOR MAPPINGS ---
 CATEGORY_OPTIONS_EN = ["Education", "Energy Access", "Environment", "Digitalization", "Health", "Sustainable Transport"]
 CATEGORY_OPTIONS_SR = ["Образовање", "Приступ енергији", "Животна средина", "Дигитализација", "Здравље", "Одрживи транспорт"]

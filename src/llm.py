@@ -4,7 +4,8 @@ from openai import OpenAI
 from src.config import (
     SYSTEM_MESSAGE,
     TRANSLATION_SYSTEM_PROMPT,
-    ADDITIONAL_CONTEXT
+    ADDITIONAL_CONTEXT,
+    PROJECT_REVIEW_MODEL
 )
 
 def translate_en_to_sr(client: OpenAI, text: str) -> str:
@@ -221,7 +222,7 @@ def get_final_projects(client: OpenAI, region: str, subcategory: str, initial_re
 
 # --- Project Review Document (Research via Web Search) ---
 
-def get_project_review_document(client: OpenAI, wbif_url: str, model: str = "gpt-4o", temperature: float = 0.2) -> str:
+def get_project_review_document(client: OpenAI, wbif_url: str, model: str = None, temperature: float = None, json_only: bool = False) -> str:
     """
     Uses OpenAI Web Search to produce a ministry-grade Project Review Document for a given WBIF project URL.
     Returns a Markdown document following the strict format provided in research prompts.
@@ -287,26 +288,55 @@ Non-negotiables:
     * Keep tone concise, neutral, decision-support oriented.
 """
 
-    user_prompt = f"""
+    # Shared schema snippet to avoid f-string brace escaping issues
+    _SCHEMA_SNIPPET = (
+        """
+{
+  "financing_structure": [
+    {"instrument": "string", "amount_text": "string", "source_label": "string", "source_url": "https://..."}
+  ],
+  "updated_timeline": [
+    {"date_iso": "YYYY-MM-DD", "milestone": "string", "source_label": "string", "source_url": "https://..."}
+  ],
+  "narrative_markdown": "string"
+}
+        """.strip()
+    )
+
+    if json_only:
+        user_prompt = f"""
+Task: Research and produce the Project Review Document for this WBIF project and RETURN ONLY JSON (no prose, no code fences):
+URL: {wbif_url}
+
+Return a JSON object with exactly these fields:
+{_SCHEMA_SNIPPET}
+Constraints:
+- financing_structure and updated_timeline must each have ≥1 valid entry; dates must be ISO.
+- All URLs must be HTTPS; source_label should be concise.
+- Output MUST be a single JSON object with no surrounding markdown and no extra commentary.
+""".strip()
+    else:
+        user_prompt = f"""
 Task: Research and produce the Project Review Document for this WBIF project:
 URL: {wbif_url}
 
-Reminder:
-- Use the Web Search tool to read the WBIF page and all related IFI/government sources.
-- Keep the exact structure and headings described in the System Prompt.
-- Include inline citations with clickable URLs for all web-derived facts, and list all links in Primary Sources.
-- If financing tables differ by source, keep both via a short note and cite both URLs.
+You MUST also return a JSON block that strictly follows this schema (for deterministic rendering of tables):
+{_SCHEMA_SNIPPET}
 
-Deliverable: One Markdown document only.
+Rules:
+- financing_structure and updated_timeline must each have at least 1 entry. Use ISO dates.
+- All source_url fields must be HTTPS and clickable.
+- The narrative_markdown must contain the full document, but DO NOT duplicate the two tables inside it.
+- Return the JSON block enclosed between lines that contain only "```json" and "```" so we can parse it.
+- After the JSON, do not output anything else.
 """.strip()
 
     response = client.responses.create(
-        model=model,
+        model=(model if model is not None else PROJECT_REVIEW_MODEL),
         input=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
-        tools=[{"type": "web_search"}],
-        temperature=temperature,
+        tools=[{"type": "web_search"}]
     )
     return response.output_text
