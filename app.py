@@ -15,9 +15,9 @@ from src.config import (
 )
 from src.gcs import read_csv_from_gcs, get_image_from_gcs
 from src.caching import ResponseCacheManager
-from src.ui import render_sidebar, render_language_selection, render_main_interface
+from src.ui import render_sidebar, render_language_selection, render_main_interface, chart_latest_comparison_bar, chart_trend_sparkline, render_delta_chip
 from src.analysis import (
-    get_indicator_analysis, prepare_regional_analysis_data, filter_projects
+    get_indicator_analysis, prepare_regional_analysis_data, filter_projects, get_indicator_series
 )
 from src.llm import (
     translate_en_to_sr, get_regional_narrative, get_background_research,
@@ -169,22 +169,87 @@ if st.session_state.stage >= 1:
 # --- Display Regional Analysis & Trigger for Stage 3 ---
 if st.session_state.stage >= 2:
     st.header(ui_text['regional_analysis_header'])
-    
-    regional_analysis_en = st.session_state.regional_analysis_en
-    
-    # Handle translation and caching of translation
-    if lang_code == 'sr':
-        cached_sr = cache_manager.get_cached_response(st.session_state.option_region, st.session_state.option_category, 'regional', 'sr')
-        if cached_sr:
-            regional_analysis = cached_sr['content']
-        else:
-            with st.spinner("Translating..."):
-                regional_analysis = translate_en_to_sr(openai_client, regional_analysis_en)
-                cache_manager.save_response(st.session_state.option_region, st.session_state.option_category, 'regional', regional_analysis, 'sr')
-    else:
-        regional_analysis = regional_analysis_en
 
-    st.markdown(regional_analysis)
+    # Charts-only mode: build Plotly visuals per indicator
+    region = st.session_state.option_region
+    category = st.session_state.option_category
+    en_region = cache_manager._normalize_region_name(region)
+    code_list = st.session_state.code_list
+    code_name_dict = st.session_state.code_name_dict
+
+    # Parse interpretations from the English narrative (robust against formatting variants)
+    interpretations_map = {}
+    try:
+        narrative = st.session_state.regional_analysis_en or ""
+        # Split into sections by numbered headers like "1. **Indicator**" or "1. Indicator"
+        sections = re.split(r"\n(?=\s*\d+\.\s+\*\*?[^\n]+)", narrative)
+        for sec in sections:
+            # capture title inside ** ** or plain text after number
+            title_match = re.search(r"^\s*\d+\.\s+(?:\*\*(.*?)\*\*|(.*))", sec)
+            if not title_match:
+                continue
+            title = (title_match.group(1) or title_match.group(2) or "").strip()
+            if not title:
+                continue
+            # find Interpretation line (case-insensitive), accept bold or plain
+            interp_match = re.search(r"\b\*\*?Interpretation\*\*?\s*:?\s*(.*)$", sec, re.IGNORECASE | re.DOTALL)
+            if interp_match:
+                interp_raw = interp_match.group(1).strip()
+                # stop at next numbered header if leak
+                interp_raw = re.split(r"\n\s*\d+\.\s", interp_raw)[0].strip()
+                # trim trailing bold markers
+                interp_raw = interp_raw.strip('*').strip()
+                if interp_raw:
+                    interpretations_map[title] = interp_raw
+    except Exception:
+        interpretations_map = {}
+
+    # Sort indicators by absolute pct delta (latest)
+    indicator_stats = []
+    for code in code_list:
+        r_df, n_df, stats = get_indicator_series(df_indicators, averages_df, en_region, code_name_dict, code)
+        indicator_stats.append((code, r_df, n_df, stats))
+    indicator_stats = sorted(
+        indicator_stats,
+        key=lambda x: abs(x[3].get("pct_delta") or 0),
+        reverse=True,
+    )
+
+    for code, r_df, n_df, stats in indicator_stats:
+        full_name = stats["full_name"]
+        higher_is_better = stats["higher_is_better"]
+        latest_region = stats["latest_region"]
+        latest_national = stats["latest_national"]
+        unit = ''
+        # Extract unit if present in parentheses
+        m = re.search(r"\(unit: ([^\)]+)\)", full_name)
+        if m:
+            unit = m.group(1)
+
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            bar_title = f"{full_name} — Latest vs National Avg"
+            fig = chart_latest_comparison_bar(bar_title, latest_region, latest_national, unit, higher_is_better)
+            st.plotly_chart(fig, use_container_width=True)
+        with col2:
+            if not r_df.empty and not n_df.empty:
+                trend_title = f"{full_name} — Trend"
+                fig2 = chart_trend_sparkline(trend_title, r_df, n_df, full_name)
+                st.plotly_chart(fig2, use_container_width=True)
+        # Delta chip line
+        delta_html = render_delta_chip(stats.get("delta"), stats.get("pct_delta"), higher_is_better)
+        if delta_html:
+            st.markdown(delta_html, unsafe_allow_html=True)
+
+        # Interpretation paragraph (translated if Serbian)
+        interpretation_text = interpretations_map.get(full_name)
+        if interpretation_text:
+            if lang_code == 'sr':
+                try:
+                    interpretation_text = translate_en_to_sr(openai_client, interpretation_text)
+                except Exception:
+                    pass
+            st.markdown(f"**Interpretation:** {interpretation_text}")
 
     if st.session_state.stage == 2:
         if st.button(ui_text['project_recommendations_button'], use_container_width=True):

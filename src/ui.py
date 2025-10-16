@@ -5,7 +5,8 @@ from datetime import datetime
 import streamlit as st
 from PIL import Image
 
-from src.config import UI_TEXT
+from src.config import UI_TEXT, CHART_COLORS, DELTA_THRESHOLDS
+import plotly.graph_objects as go
 from src.caching import ResponseCacheManager
 
 def get_base64_from_image(image: Image.Image) -> str:
@@ -151,3 +152,60 @@ def render_main_interface(lang: str, regions: list, categories: list):
     
     st.write(ui_text['region_selected'].format(region=region))
     st.write(ui_text['category_selected'].format(category=category))
+
+
+# --- Plotly chart helpers ---
+def render_delta_chip(delta: float, pct_delta: float, higher_is_better: bool) -> str:
+    if not isinstance(delta, (int, float)):
+        return ""
+    val = pct_delta if pct_delta == pct_delta else 0  # NaN check
+    good = DELTA_THRESHOLDS["good"]
+    warn = DELTA_THRESHOLDS["warn"]
+    is_positive = val >= 0
+    favorable = is_positive if higher_is_better else not is_positive
+    mag = abs(val)
+    color = CHART_COLORS["region_neutral"]
+    if mag >= good:
+        color = CHART_COLORS["region_good"] if favorable else CHART_COLORS["region_bad"]
+    elif mag >= warn:
+        color = CHART_COLORS["region_good"] if favorable else CHART_COLORS["region_bad"]
+    arrow = "▲" if is_positive else "▼"
+    pct_str = f"{val*100:.1f}%"
+    return f"<span style='color:{color}; font-weight:600'>{arrow} {pct_str}</span>"
+
+
+def chart_latest_comparison_bar(title: str, region_value: float, national_value: float, unit: str, higher_is_better: bool) -> go.Figure:
+    region_color = CHART_COLORS["region_good"] if (region_value >= national_value) == higher_is_better else CHART_COLORS["region_bad"]
+    fig = go.Figure()
+    fig.add_bar(name=title, x=["Municipality"], y=[region_value], marker_color=region_color)
+    fig.add_bar(name="National avg", x=["Municipality"], y=[national_value], marker_color=CHART_COLORS["national"])
+    fig.update_layout(
+        barmode='group',
+        height=240,
+        margin=dict(l=10, r=10, t=60, b=10),
+        showlegend=False,
+        title=dict(text=title, x=0.01, font=dict(size=14)),
+        yaxis_title=unit or "",
+    )
+    return fig
+
+
+def chart_trend_sparkline(title: str, regional_df, national_df, value_col: str) -> go.Figure:
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=regional_df['year'], y=regional_df[value_col], mode='lines+markers', name='Municipality', line=dict(color=CHART_COLORS['region_neutral']), marker=dict(size=5)))
+    fig.add_trace(go.Scatter(x=national_df['year'], y=national_df[value_col], mode='lines', name='National avg', line=dict(color=CHART_COLORS['national'], dash='dot')))
+    # Ensure x-axis ticks are integer years only
+    try:
+        years = list(regional_df['year'].dropna()) + list(national_df['year'].dropna())
+        years_int = sorted({int(y) for y in years})
+        xaxis_cfg = dict(tickmode='array', tickvals=years_int, ticktext=[str(y) for y in years_int])
+    except Exception:
+        xaxis_cfg = {}
+    fig.update_layout(
+        height=180,
+        margin=dict(l=10, r=10, t=40, b=10),
+        showlegend=False,
+        title=dict(text=title, x=0.01, font=dict(size=13)),
+        xaxis=xaxis_cfg,
+    )
+    return fig

@@ -186,3 +186,35 @@ ADDITIONAL_CONTEXT = {
                         High power quality is crucial for the proper functioning, efficiency, and safety of electrical and electronic equipment, while poor quality can lead to equipment damage, data loss, disruptions, and increased costs""",
     'Sustainable Transport': """According to the Country Benchmarking Dashboard (CBD), Serbia has a national Road Quality Score of 42 and Railroad Quality Score of 62 (both out of 100) based on the EU average."""
 }
+
+# --- Visualization configuration ---
+# Heuristics: True means higher is better; False means lower is better
+INDICATOR_HIGHER_IS_BETTER = {
+    "Accessibility to Health Services (unit: %)": True,
+    "Accessibility to School Services (unit: %)": True,
+    "Diversity of Health Services": True,
+    "Nighttime Luminosity (unit: nWatts/(cm2 x sr)": True,
+    "Key Structure Average Broadband Download Speed (unit: megabites per second)": True,
+    "Average Cellular Download Speed (unit: megabites per second)": True,
+    "Key Structures without Internet Access (unit: %)": False,
+    "Road flood risk per capita (unit: km per capita)": False,
+    "Road heatwave risk per capita (unit: km per capita)": False,
+    "Railway flood risk per capita (unit: km per capita)": False,
+    "Railway heatwave risk per capita (unit: km per capita)": False,
+    "PM 2.5 concentration (unit: µg/m3)": False,
+    "PM 10 concentration (unit: µg/m3)": False,
+    "NO2 concentration (unit: µg/m3)": False,
+    "Emissions from all sources (unit: kgCO2e/kg)": False,
+    "Emissions from Coal Power Plants (unit: kgCO2e/kg)": False,
+    "Agriculture Emissions (unit: kgCO2e/kg)": False,
+    "Forestry & Land Use Emissions (unit: kgCO2e/kg)": False,
+}
+
+DELTA_THRESHOLDS = {"good": 0.10, "warn": 0.03}
+
+CHART_COLORS = {
+    "region_good": "#2e7d32",
+    "region_bad": "#c62828",
+    "region_neutral": "#757575",
+    "national": "#1e88e5",
+}
