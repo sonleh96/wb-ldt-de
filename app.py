@@ -2,6 +2,7 @@ import json
 import time
 import re
 from datetime import datetime
+import html as _html
 
 import streamlit as st
 from openai import OpenAI
@@ -15,7 +16,7 @@ from src.config import (
 )
 from src.gcs import read_csv_from_gcs, get_image_from_gcs
 from src.caching import ResponseCacheManager
-from src.ui import render_sidebar, render_language_selection, render_main_interface, chart_latest_comparison_bar, chart_trend_sparkline, render_delta_chip
+from src.ui import render_sidebar, render_language_selection, render_main_interface, chart_latest_comparison_bar, chart_trend_sparkline, render_delta_chip, spacer
 from src.analysis import (
     get_indicator_analysis, prepare_regional_analysis_data, filter_projects, get_indicator_series
 )
@@ -106,6 +107,124 @@ ui_text = UI_TEXT[lang_code]
 render_main_interface(lang_code, regions, categories)
 
 # --- Main App Logic ---
+
+# --- Helpers: SWOT parsing and rendering ---
+def _parse_swot_from_markdown(md: str) -> dict:
+    """Extract Strengths, Weaknesses, Opportunities, Challenges bullet lists from LLM markdown."""
+    if not isinstance(md, str):
+        return {"strengths": [], "weaknesses": [], "opportunities": [], "challenges": []}
+    def _extract(section: str) -> list:
+        # Capture text block after **Section:** until next bold heading or end
+        m = re.search(rf"\*\*{re.escape(section)}\s*:\s*\*\*(.*?)(\n\s*\*\*|$)", md, re.IGNORECASE | re.DOTALL)
+        block = m.group(1) if m else ""
+        # Lines starting with '-' or '•'
+        items = []
+        for line in block.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("-") or stripped.startswith("•"):
+                val = stripped.lstrip("-• ").strip()
+                if val and val not in ("...", "-"):
+                    items.append(val)
+        return items
+    return {
+        "strengths": _extract("Strengths"),
+        "weaknesses": _extract("Weaknesses"),
+        "opportunities": _extract("Opportunities"),
+        "challenges": _extract("Challenges"),
+    }
+
+def _translate_list_if_needed(client: OpenAI, items: list, lang: str) -> list:
+    if lang != 'sr' or not items:
+        return items
+    joined = "\n".join(f"- {it}" for it in items)
+    try:
+        translated = translate_en_to_sr(client, joined)
+        # Re-split to bullets (keep order)
+        out = []
+        for line in translated.splitlines():
+            line = line.strip()
+            if line.startswith("-") or line.startswith("•"):
+                line = line.lstrip("-• ").strip()
+            if line:
+                out.append(line)
+        return out or items
+    except Exception:
+        return items
+
+def _render_swot(swot: dict, lang: str, region_label: str, subcategory_label: str):
+    title_prefix = "SWOT Summary" if lang == 'en' else "SWOT резиме"
+    st.markdown(f"### 💡 {subcategory_label} {title_prefix} for {region_label}")
+
+    strengths = swot.get("strengths", [])
+    weaknesses = swot.get("weaknesses", [])
+    opportunities = swot.get("opportunities", [])
+    challenges = swot.get("challenges", [])
+
+    def _to_html_with_links(text: str) -> str:
+        """Escape text but convert Markdown links or bare URLs/domains into HTML anchors.
+        Supports [label](transparentnost.org.rs) and bare domains by prepending https:// when missing.
+        """
+        if not isinstance(text, str):
+            return ""
+        md_link = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
+        combined = re.compile(r"\[([^\]]+)\]\(([^)]+)\)|(?<!@)\b(?:https?://)?(?:www\.)?[A-Za-z0-9.-]+\.[A-Za-z]{2,}(?:/[^\s)]+)?")
+        out = []
+        idx = 0
+        for m in combined.finditer(text):
+            start, end = m.span()
+            if start > idx:
+                out.append(_html.escape(text[idx:start]))
+            frag = text[start:end]
+            mm = md_link.match(frag)
+            if mm:
+                label = _html.escape(mm.group(1))
+                raw_url = mm.group(2).strip()
+                if not raw_url.lower().startswith(("http://", "https://")):
+                    raw_url = "https://" + raw_url
+                url = _html.escape(raw_url)
+                out.append(f"<a href=\"{url}\" target=\"_blank\" rel=\"noopener noreferrer\">{label}</a>")
+            else:
+                raw_url = frag.strip()
+                if not raw_url.lower().startswith(("http://", "https://")):
+                    raw_url = "https://" + raw_url
+                url = _html.escape(raw_url)
+                label = _html.escape(frag.strip())
+                out.append(f"<a href=\"{url}\" target=\"_blank\" rel=\"noopener noreferrer\">{label}</a>")
+            idx = end
+        if idx < len(text):
+            out.append(_html.escape(text[idx:]))
+        return "".join(out)
+
+    def _box_html(title: str, items: list, bg: str, icon: str) -> str:
+        lis = "\n".join(f"<li>{_to_html_with_links(str(i))}</li>" for i in items) if items else "<li>-</li>"
+        return (
+            f"""
+            <div style='background-color:{bg};padding:1.1em;border-radius:12px;'>
+            <h4>{icon} {title}</h4>
+            <ul style='margin-bottom:0;'>
+            {lis}
+            </ul>
+            </div>
+            """
+        )
+
+    # Row 1
+    col1, col2 = st.columns(2)
+    with col1:
+        title = "Strengths" if lang == 'en' else "Снаге"
+        st.markdown(_box_html(title, strengths, "#A9D8C2", "💪"), unsafe_allow_html=True)
+    with col2:
+        title = "Weaknesses" if lang == 'en' else "Слабости"
+        st.markdown(_box_html(title, weaknesses, "#B9D6F2", "⚠️"), unsafe_allow_html=True)
+
+    # Row 2
+    col3, col4 = st.columns(2)
+    with col3:
+        title = "Opportunities" if lang == 'en' else "Могућности"
+        st.markdown(_box_html(title, opportunities, "#FBE7A1", "🌱"), unsafe_allow_html=True)
+    with col4:
+        title = "Challenges" if lang == 'en' else "Изазови"
+        st.markdown(_box_html(title, challenges, "#F7B6A3", "🚧"), unsafe_allow_html=True)
 
 # --- Stage 0 -> 1: Indicator Analysis ---
 if st.session_state.stage == 0:
@@ -272,11 +391,30 @@ if st.session_state.stage >= 2:
                     cache_manager.save_response(region, category, 'research', regional_summary_en, 'en')
                 st.session_state.regional_summary_en = regional_summary_en
             
-            # Display immediately
+            # Display immediately (SWOT layout + CBD context card)
             summary = regional_summary_en
+            swot = _parse_swot_from_markdown(summary)
+            # Translate bullets if Serbian
             if lang_code == 'sr':
-                summary = translate_en_to_sr(openai_client, summary)
-            st.markdown(summary)
+                for k in list(swot.keys()):
+                    swot[k] = _translate_list_if_needed(openai_client, swot[k], lang_code)
+            _render_swot(swot, lang_code, region, category)
+            # Render CBD context card if present
+            context_items = swot.get("cbd_context", [])
+            if context_items:
+                st.write("")
+                title = "Context from the PIMxPAM Country Benchmarking Dashboard" if lang_code == 'en' else "Контекст из PIMxPAM Country Benchmarking Dashboard"
+                st.markdown(
+                    f"""
+                    <div style='background-color:#EDE7F6;padding:1.1em;border-radius:12px;'>
+                    <h4>📊 {title}</h4>
+                    <ul style='margin-bottom:0;'>
+                    {''.join(f"<li>{_to_html_with_links(str(i))}</li>" for i in context_items)}
+                    </ul>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
             # --- Run and Display Initial Recommendations ---
             st.header(ui_text['project_recommendations_header'])
@@ -320,22 +458,32 @@ if st.session_state.stage >= 2:
 
 # --- Display Project Recommendations (on subsequent reruns) ---
 if st.session_state.stage >= 3:
-    # Background Research
+    # Background Research (SWOT)
     st.header(ui_text['background_research_header'])
     summary_en = st.session_state.regional_summary_en
+    swot = _parse_swot_from_markdown(summary_en)
     if lang_code == 'sr':
-        cached_sr = cache_manager.get_cached_response(st.session_state.option_region, st.session_state.option_category, 'research', 'sr')
-        if cached_sr:
-            summary = cached_sr['content']
-        else:
-            with st.spinner("Translating..."):
-                summary = translate_en_to_sr(openai_client, summary_en)
-                cache_manager.save_response(st.session_state.option_region, st.session_state.option_category, 'research', summary, 'sr')
-    else:
-        summary = summary_en
-    st.markdown(summary)
+        for k in list(swot.keys()):
+            swot[k] = _translate_list_if_needed(openai_client, swot[k], lang_code)
+    _render_swot(swot, lang_code, st.session_state.option_region, st.session_state.option_category)
+    context_items = swot.get("cbd_context", [])
+    if context_items:
+        st.write("")
+        title = "Context from the PIMxPAM Country Benchmarking Dashboard" if lang_code == 'en' else "Контекст из PIMxPAM Country Benchmarking Dashboard"
+        st.markdown(
+            f"""
+            <div style='background-color:#EDE7F6;padding:1.1em;border-radius:12px;'>
+            <h4>📊 {title}</h4>
+            <ul style='margin-bottom:0;'>
+            {''.join(f"<li>{_to_html_with_links(str(i))}</li>" for i in context_items)}
+            </ul>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     # Initial Recommendations
+    spacer(24)
     st.header(ui_text['project_recommendations_header'])
     initial_recs_en = st.session_state.initial_recs_en
     if lang_code == 'sr':
@@ -410,7 +558,7 @@ if st.session_state.stage >= 3:
 
     # --- Render per-project details expander ---
     st.write("")
-    st.subheader("More details")
+    st.subheader("More Project Details")
     for p in parsed_projects:
         with st.expander(f"{p['title']} — More details"):
             details_en = cache_manager.get_cached_project_details(p["url"], language='en')

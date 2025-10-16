@@ -232,3 +232,7 @@ def chart_trend_sparkline(title: str, regional_df, national_df, value_col: str, 
         yaxis_title=unit or "",
     )
     return fig
+
+
+def spacer(px=24):
+    st.markdown(f"<div style='height:{px}px'></div>", unsafe_allow_html=True)
