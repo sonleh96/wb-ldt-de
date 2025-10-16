@@ -1,12 +1,18 @@
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 
 import streamlit as st
 from google.cloud import storage
 import pandas as pd
 
-from src.config import CACHE_VERSION, CATEGORY_OPTIONS_EN, CATEGORY_OPTIONS_SR
+from src.config import (
+    CACHE_VERSION,
+    CATEGORY_OPTIONS_EN,
+    CATEGORY_OPTIONS_SR,
+    PROJECT_DETAILS_TTL_HOURS,
+    PROJECT_DETAILS_TTL_ENABLED,
+)
 
 class ResponseCacheManager:
     """
@@ -64,7 +70,8 @@ class ResponseCacheManager:
             "version": self.cache_version,
             "created_at": datetime.now().isoformat(),
             "last_updated": datetime.now().isoformat(),
-            "responses": {}
+            "responses": {},
+            "project_details": {}
         }
     
     def _save_cache(self) -> None:
@@ -150,3 +157,51 @@ class ResponseCacheManager:
             "last_updated": self.cache.get("last_updated"),
             "gcs_path": f"gs://{self.bucket_name}/{self.cache_file_path}"
         }
+
+    # --- Project Details (by URL) with TTL ---
+
+    def _normalize_project_url(self, project_url: str) -> str:
+        if not project_url or not isinstance(project_url, str):
+            return "unknown_project_url"
+        return project_url.strip().lower()
+
+    def _generate_project_details_key(self, project_url: str, language: str = 'en') -> str:
+        normalized_url = self._normalize_project_url(project_url)
+        return f"{normalized_url}__{language}"
+
+    def get_cached_project_details(self, project_url: str, language: str = 'en') -> Optional[Dict[str, Any]]:
+        """Retrieve cached project details. If TTL is enabled and exceeded, return None; otherwise return entry."""
+        key = self._generate_project_details_key(project_url, language)
+        entry = self.cache.get("project_details", {}).get(key)
+        if not entry:
+            return None
+        # If TTL is disabled, do not expire
+        if not PROJECT_DETAILS_TTL_ENABLED or (isinstance(PROJECT_DETAILS_TTL_HOURS, (int, float)) and PROJECT_DETAILS_TTL_HOURS <= 0):
+            return entry
+        # TTL is enabled - enforce expiration
+        created_at_str = entry.get("created_at")
+        if not created_at_str:
+            return None
+        try:
+            created_at = datetime.fromisoformat(created_at_str)
+        except Exception:
+            return None
+        ttl = timedelta(hours=PROJECT_DETAILS_TTL_HOURS)
+        if datetime.now() - created_at > ttl:
+            return None
+        return entry
+
+    def save_project_details(self, project_url: str, content_markdown: str, language: str = 'en', source_count: Optional[int] = None, metadata: Optional[Dict[str, Any]] = None) -> None:
+        """Save project details markdown with metadata and timestamp."""
+        key = self._generate_project_details_key(project_url, language)
+        if "project_details" not in self.cache:
+            self.cache["project_details"] = {}
+        self.cache["project_details"][key] = {
+            "project_url": project_url,
+            "language": language,
+            "content": content_markdown,
+            "created_at": datetime.now().isoformat(),
+            "source_count": source_count,
+            "meta": metadata or {}
+        }
+        self._save_cache()

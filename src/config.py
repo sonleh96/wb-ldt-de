@@ -5,6 +5,9 @@ BUCKET_NAME = "wb-ldt"
 CACHE_PATH = "decision_engine/cached_responses"
 CACHE_VERSION = "1.0"
 SLEEP_TIME = 0 # Can be increased to simulate processing time for cached responses
+PROJECT_DETAILS_TTL_HOURS = 48
+# Set to False to disable TTL expiration (cache never expires). Set True to enforce TTL.
+PROJECT_DETAILS_TTL_ENABLED = False
 
 # --- CATEGORY AND INDICATOR MAPPINGS ---
 CATEGORY_OPTIONS_EN = ["Education", "Energy Access", "Environment", "Digitalization", "Health", "Sustainable Transport"]

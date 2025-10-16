@@ -1,5 +1,7 @@
 import json
 import time
+import re
+from datetime import datetime
 
 import streamlit as st
 from openai import OpenAI
@@ -19,7 +21,7 @@ from src.analysis import (
 )
 from src.llm import (
     translate_en_to_sr, get_regional_narrative, get_background_research,
-    get_initial_recommendations, get_final_projects
+    get_initial_recommendations, get_final_projects, get_project_review_document
 )
 
 # --- App Configuration ---
@@ -248,6 +250,8 @@ if st.session_state.stage >= 2:
             
             st.rerun() # Rerun once at the end to finalize the state
 
+            
+
 # --- Display Project Recommendations (on subsequent reruns) ---
 if st.session_state.stage >= 3:
     # Background Research
@@ -294,6 +298,150 @@ if st.session_state.stage >= 3:
     else:
         final_projects = final_projects_en
     st.markdown(final_projects)
+
+    # --- Parse projects (title + URL) from English source text ---
+    def _parse_projects_from_markdown(md_text: str):
+        projects = []
+        # Split by numbered headings like "1. **Title**"
+        blocks = re.split(r"\n(?=\d+\. \*\*)", md_text)
+        for block in blocks:
+            title_match = re.search(r"^\d+\. \*\*(.*?)\*\*", block)
+            if not title_match:
+                continue
+            title = title_match.group(1).strip()
+            # Find URL line
+            url = None
+            # Prefer explicit URL line
+            url_line_match = re.search(r"URL\s*:\s*(.*)", block)
+            if url_line_match:
+                # Extract first https URL from the URL line
+                url_candidate = url_line_match.group(1)
+                url_match = re.search(r"https?://[^\s)\]]+", url_candidate)
+                if url_match:
+                    url = url_match.group(0)
+            if not url:
+                # Fallback: first URL in the block
+                url_match = re.search(r"https?://[^\s)\]]+", block)
+                if url_match:
+                    url = url_match.group(0)
+            if url:
+                projects.append({"title": title, "url": url})
+        return projects
+
+    parsed_projects = _parse_projects_from_markdown(final_projects_en)
+
+    # --- Prefetch top 2 project details (English) ---
+    prefetch_count = min(1, len(parsed_projects))
+    for i in range(prefetch_count):
+        p = parsed_projects[i]
+        if not cache_manager.get_cached_project_details(p["url"], language='en'):
+            with st.spinner(f"Fetching details for: {p['title']}"):
+                try:
+                    md = get_project_review_document(openai_client, p["url"], model="gpt-5", temperature=None)
+                    cache_manager.save_project_details(p["url"], md, language='en', metadata={"title": p["title"]})
+                except Exception as e:
+                    st.info(f"Could not prefetch details for {p['title']}: {e}")
+
+    # --- Render per-project details expander ---
+    st.write("")
+    st.subheader("More details")
+    for p in parsed_projects:
+        with st.expander(f"{p['title']} — More details"):
+            details_en = cache_manager.get_cached_project_details(p["url"], language='en')
+            if not details_en:
+                with st.spinner("Researching project details..."):
+                    try:
+                        md = get_project_review_document(openai_client, p["url"], model="gpt-5", temperature=None)
+                        cache_manager.save_project_details(p["url"], md, language='en', metadata={"title": p["title"]})
+                        details_en = cache_manager.get_cached_project_details(p["url"], language='en')
+                    except Exception as e:
+                        st.warning(f"Unable to load project details: {e}")
+                        details_en = None
+
+            if details_en:
+                created_at = details_en.get("created_at")
+                freshness = ""
+                try:
+                    ts = datetime.fromisoformat(created_at)
+                    hours_ago = int((datetime.now() - ts).total_seconds() // 3600)
+                    freshness = f"Last updated {hours_ago}h ago"
+                except Exception:
+                    freshness = "Last updated recently"
+
+                content_md = details_en.get("content", "")
+
+                # Normalize inline pipe-separated tables into valid Markdown tables
+                def _normalize_markdown_tables_inline(doc: str) -> str:
+                    if not isinstance(doc, str):
+                        return doc
+
+                    def reformat_inline_table(line: str) -> str:
+                        original = line
+                        # Find first pipe; treat anything before as label text (e.g., "Financing Structure")
+                        first_pipe_idx = line.find('|')
+                        prefix = line[:first_pipe_idx] if first_pipe_idx > -1 else ''
+                        table_part = line[first_pipe_idx:] if first_pipe_idx > -1 else line
+
+                        # Split rows by double-pipe separators
+                        rows = [r.strip() for r in re.split(r"\s*\|\|\s*", table_part) if r.strip()]
+                        if not rows:
+                            return original
+
+                        parsed_rows = []
+                        for r in rows:
+                            cells = [c.strip() for c in r.strip('|').split('|')]
+                            # drop empty trailing cells
+                            while cells and cells[-1] == '':
+                                cells.pop()
+                            parsed_rows.append(cells)
+
+                        # Handle header: drop label cell like "Financing Structure" or "Updated Timeline"
+                        if parsed_rows and parsed_rows[0]:
+                            first_cell_lower = parsed_rows[0][0].lower()
+                            if first_cell_lower.startswith('financing') or first_cell_lower.startswith('updated timeline') or first_cell_lower.startswith('timeline'):
+                                parsed_rows[0] = parsed_rows[0][1:]
+
+                        if not parsed_rows or not parsed_rows[0]:
+                            return original
+
+                        header = parsed_rows[0]
+                        # Skip any explicit separator rows containing ---
+                        data_rows = [row for row in parsed_rows[1:] if not any('---' in c for c in row)]
+
+                        # Build proper Markdown table
+                        table_lines = []
+                        table_lines.append('|' + ' | '.join(header) + '|')
+                        table_lines.append('|' + '|'.join(['---'] * len(header)) + '|')
+                        for row in data_rows:
+                            # pad/truncate to header length for stability
+                            if len(row) < len(header):
+                                row = row + [''] * (len(header) - len(row))
+                            elif len(row) > len(header):
+                                row = row[:len(header)]
+                            table_lines.append('|' + ' | '.join(row) + '|')
+                        return '\n'.join(table_lines)
+
+                    out_lines = []
+                    for line in doc.split('\n'):
+                        if '||' in line and '|' in line:
+                            out_lines.append(reformat_inline_table(line))
+                        else:
+                            out_lines.append(line)
+                    return '\n'.join(out_lines)
+
+                content_md = _normalize_markdown_tables_inline(content_md)
+
+                if lang_code == 'sr':
+                    try:
+                        with st.spinner("Translating details..."):
+                            content_md = translate_en_to_sr(openai_client, content_md)
+                            # Save translated version for future opens
+                            cache_manager.save_project_details(p["url"], content_md, language='sr', metadata={"title": p["title"], "translated_from": created_at})
+                    except Exception:
+                        pass
+
+                st.caption(f"{freshness} • Web sources")
+                st.markdown(content_md)
 
 # --- New Analysis Button ---
 if st.session_state.stage > 0:

@@ -142,7 +142,7 @@ def get_initial_recommendations(client: OpenAI, region: str, subcategory: str, r
     """
     project_task = f"""
         # Task
-        - Generate exactly 5 project recommendations based on the **Regional Analysis**.
+        - Generate exactly 3 project recommendations based on the **Regional Analysis**.
         - Rank projects by implementation feasibility.
         - Provide exactly 3 concrete policy actions for each project.
         # Requirements
@@ -186,7 +186,7 @@ def get_final_projects(client: OpenAI, region: str, subcategory: str, initial_re
     """
     relevant_projects_q = f"""
         # Task
-        - Select the 5 most relevant projects from the provided dataset that align with the recommendations.
+        - Select the 3 most relevant projects from the provided dataset that align with the recommendations.
         - Present them with complete information (description, location, cost, URL, etc.).
         # Requirements
         - Projects should be relevant to {subcategory}.
@@ -217,3 +217,96 @@ def get_final_projects(client: OpenAI, region: str, subcategory: str, initial_re
         model="gpt-4.1", messages=final_project_messages, temperature=0.1, seed=42
     )
     return final_response.choices[0].message.content
+
+
+# --- Project Review Document (Research via Web Search) ---
+
+def get_project_review_document(client: OpenAI, wbif_url: str, model: str = "gpt-4o", temperature: float = 0.2) -> str:
+    """
+    Uses OpenAI Web Search to produce a ministry-grade Project Review Document for a given WBIF project URL.
+    Returns a Markdown document following the strict format provided in research prompts.
+    """
+    system_prompt = r"""
+Role: You are a meticulous public-sector analyst.
+Mission: Produce a ministry-grade "Project Review Document" for a single WBIF project URL.
+Tools: You must use the OpenAI Web Search tool to find authoritative sources (WBIF, IFIs, official gov sites, reputable media).
+Style & Format: Exactly follow this structure (section headings and order are mandatory): 
+
+    Project Review Document” (header block with: Project ID, Title, Sector/Window, Beneficiary, Lead IFI, Status)
+
+    1) Objectives & Scope: Focus on socio-economic and development objectives of the project.
+        * Be specific in terms of scope: How does this project fill existing quantifiable gaps?
+        * Be clear on how this project advances the EU's Green Agenda and positions in the Single Project Pipeline (SPP)
+        * Outline the objectives and scope of the project in bullet points.
+
+    2) Financing Structure (headline) with a 2-column table (Instrument | Amount)
+
+    3) Implementation & Governance with “Government / Implementing Bodies” (clearly state who the borrower, implementor, local beneficiaries, and regulatory bodies are) and “International Partners” (and their roles) sub-bullets. 
+        * Include contact information for agencies/individuals in charge as a subsection.
+
+    4) Outputs / Expected Results: show tangible, quantifiable, and time-bound expected results of the project.
+        * Use bullet points to outline the expected results of the project.
+
+    5) Updated Timeline (evidence-based reconstruction) as a 3-column table (Date | Milestone | Source)
+        * Source cannot be empty.
+
+    6) Risk Notes and Mitigation Strategies implemented (if any): Consider financial, regulatory/compliance, environmental/social, technical/operational, stakeholder/governance, and general planning risks. 
+        * Outline facts and/or suggestions for each risk category, using bullet points.
+
+    7) Primary Sources (quick access):  bullet list of the URLs used
+
+Citations (mandatory):
+
+    * Every factual claim derived from the web must have an inline citation immediately after the sentence/paragraph, with a clickable URL (e.g., “... Implementation, announced in 2022. WBIF page
+    ”).
+
+    * The Timeline table’s third column must show a concise source label linked to the exact URL for each row.
+
+    * The Primary Sources section must list all URLs actually used.
+
+    * Evidence & quality rules:
+
+    * Prefer WBIF project pages, IFI project summary documents (e.g EBRD/EIB/CEB/World Bank), official ministry/government portals, and reputable press for milestones.
+
+    * If amounts or dates differ across sources, show the conservative figure in the main text and clarify differences in a short note with citations to both sources.
+
+    * If a field is unclear or missing, state that it’s not publicly specified and cite the best source you checked.
+
+Outputs:
+
+    * Produce a single self-contained Markdown document in the exact section order above.
+
+    * No preamble, no meta-commentary—just the document.
+
+Non-negotiables:
+
+    * Do not invent data.
+
+    * Do not include non-authoritative blogs, aggregator copies, or broken links.
+
+    * Keep tone concise, neutral, decision-support oriented.
+"""
+
+    user_prompt = f"""
+Task: Research and produce the Project Review Document for this WBIF project:
+URL: {wbif_url}
+
+Reminder:
+- Use the Web Search tool to read the WBIF page and all related IFI/government sources.
+- Keep the exact structure and headings described in the System Prompt.
+- Include inline citations with clickable URLs for all web-derived facts, and list all links in Primary Sources.
+- If financing tables differ by source, keep both via a short note and cite both URLs.
+
+Deliverable: One Markdown document only.
+""".strip()
+
+    response = client.responses.create(
+        model=model,
+        input=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        tools=[{"type": "web_search"}],
+        temperature=temperature,
+    )
+    return response.output_text
