@@ -177,20 +177,31 @@ def render_delta_chip(delta: float, pct_delta: float, higher_is_better: bool) ->
 def chart_latest_comparison_bar(title: str, region_value: float, national_value: float, unit: str, higher_is_better: bool) -> go.Figure:
     region_color = CHART_COLORS["region_good"] if (region_value >= national_value) == higher_is_better else CHART_COLORS["region_bad"]
     fig = go.Figure()
-    fig.add_bar(name=title, x=["Municipality"], y=[region_value], marker_color=region_color)
+    fig.add_bar(name="Municipality", x=["Municipality"], y=[region_value], marker_color=region_color)
     fig.add_bar(name="National avg", x=["Municipality"], y=[national_value], marker_color=CHART_COLORS["national"])
     fig.update_layout(
         barmode='group',
         height=240,
         margin=dict(l=10, r=10, t=60, b=10),
-        showlegend=False,
+        showlegend=True,
+        legend=dict(
+            orientation='h',
+            x=0,
+            xanchor='left',
+            y=1.1,
+            yanchor='top',
+            bgcolor='rgba(255,255,255,0.85)',
+            bordercolor='rgba(0,0,0,0.1)',
+            borderwidth=1,
+            font=dict(size=11)
+        ),
         title=dict(text=title, x=0.01, font=dict(size=14)),
         yaxis_title=unit or "",
     )
     return fig
 
 
-def chart_trend_sparkline(title: str, regional_df, national_df, value_col: str) -> go.Figure:
+def chart_trend_sparkline(title: str, regional_df, national_df, value_col: str, unit: str) -> go.Figure:
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=regional_df['year'], y=regional_df[value_col], mode='lines+markers', name='Municipality', line=dict(color=CHART_COLORS['region_neutral']), marker=dict(size=5)))
     fig.add_trace(go.Scatter(x=national_df['year'], y=national_df[value_col], mode='lines', name='National avg', line=dict(color=CHART_COLORS['national'], dash='dot')))
@@ -202,10 +213,22 @@ def chart_trend_sparkline(title: str, regional_df, national_df, value_col: str) 
     except Exception:
         xaxis_cfg = {}
     fig.update_layout(
-        height=180,
+        height=240,
         margin=dict(l=10, r=10, t=40, b=10),
-        showlegend=False,
+        showlegend=True,
+        legend=dict(
+            orientation='h',
+            x=1,
+            xanchor='right',
+            y=1.15,
+            yanchor='top',
+            bgcolor='rgba(255,255,255,0.85)',
+            bordercolor='rgba(0,0,0,0.1)',
+            borderwidth=1,
+            font=dict(size=11)
+        ),
         title=dict(text=title, x=0.01, font=dict(size=13)),
         xaxis=xaxis_cfg,
+        yaxis_title=unit or "",
     )
     return fig

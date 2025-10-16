@@ -227,14 +227,15 @@ if st.session_state.stage >= 2:
             unit = m.group(1)
 
         col1, col2 = st.columns([1, 1])
+        base_name = re.sub(r"\s*\(unit: [^\)]+\)", "", full_name).strip()
         with col1:
-            bar_title = f"{full_name} — Latest vs National Avg"
+            bar_title = f"{base_name} — Latest vs National Avg"
             fig = chart_latest_comparison_bar(bar_title, latest_region, latest_national, unit, higher_is_better)
             st.plotly_chart(fig, use_container_width=True)
         with col2:
             if not r_df.empty and not n_df.empty:
-                trend_title = f"{full_name} — Trend"
-                fig2 = chart_trend_sparkline(trend_title, r_df, n_df, full_name)
+                trend_title = f"{base_name} — Trend"
+                fig2 = chart_trend_sparkline(trend_title, r_df, n_df, full_name, unit)
                 st.plotly_chart(fig2, use_container_width=True)
         # Delta chip line
         delta_html = render_delta_chip(stats.get("delta"), stats.get("pct_delta"), higher_is_better)
