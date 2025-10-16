@@ -74,11 +74,48 @@ def get_background_research(client: OpenAI, region: str, subcategory: str) -> st
     task_research = f"""
         # Task
         - Provide a summary regarding the {region} municipality of Serbia when it comes to {subcategory}, focusing on its assets, weaknesses, and most relevant challenges.
-        - Also look for basic information regarding the municipality such as its location, population, etc.
+        - The new information should be based on the latest data available.
+        - The new information should come from reliable sources such as government websites,the World Bank, the European Commission, the OECD, etc.
+        - Clearly state the region's most relevant strengths, weaknesses, and challenges, and opportunities.
+        - Organize the information in a structured way, with clear headings and subheadings. 
+
         # Requirements
-        - Summarize the results in ≤ 150 words.
-        - Incorporate the following additional context, if applicable:
+        - Summarize the results in ≤ 200 words (but don't mention this requirement in the output). Do not print out the word count either.
+        - Cite the sources in the format with hyperlinks [Source: <source name>](<source URL>). Make sure the hyperlinks are working and clickable -> open in a new tab.
+        - Incorporate the following additional context, if applicable. If the source is the context (Country Benchmarking Dashboard), use the source name "PIMxPAM Country Benchmarking Dashboard" and the source URL "https://cbd.pim-pam.net/":
             {ADDITIONAL_CONTEXT[subcategory]}
+        - New information must not contradict the existing context (if available).
+        - Do not suggest "Let me know if you’d like a deeper dive into any of these areas." or anything similar in the output.
+    
+        # Output Format (Follow Exactly)
+        Here's a quick summary of the {region} municipality when it comes to {subcategory}:
+
+        **Strengths:**
+        - [Strength 1]
+        - [Strength 2]
+        - ...
+
+        **Weaknesses:**
+        - [Weakness 1]
+        - [Weakness 2]
+        - ...
+
+        **Challenges:**
+        - [Challenge 1]
+        - [Challenge 2]
+        - ...
+
+        **Opportunities:**
+        - [Opportunity 1]
+        - [Opportunity 2]
+        - ...
+        
+        **Context from the PIMxPAM Country Benchmarking Dashboard:**
+        Context from the PIMxPAM Country Benchmarking Dashboard (https://cbd.pim-pam.net/):
+        - [Context 1]
+        - [Context 2]
+        - ...
+        
     """
     research_messages = [{"role": "system", "content": research_system_message}, 
                          {"role": "user", "content": task_research}]
