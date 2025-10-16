@@ -110,8 +110,7 @@ def get_background_research(client: OpenAI, region: str, subcategory: str) -> st
         - [Opportunity 2]
         - ...
         
-        **Context from the PIMxPAM Country Benchmarking Dashboard:**
-        Context from the PIMxPAM Country Benchmarking Dashboard (https://cbd.pim-pam.net/):
+        **Context from the PIMxPAM Country Benchmarking Dashboard:** (https://cbd.pim-pam.net/):
         - [Context 1]
         - [Context 2]
         - ...
@@ -138,7 +137,7 @@ def get_initial_recommendations(client: OpenAI, region: str, subcategory: str, r
         - Your task is to generate project recommendations for the {region} municipality in terms of {subcategory}.
         - Recommendations must be **strictly based on** the provided regional analysis and summary.
         # Context 
-        **# Regional Summary (For Refinement Only):**
+        **# Regional Summary:**
         {regional_summary}
     """
     project_task = f"""
@@ -158,6 +157,7 @@ def get_initial_recommendations(client: OpenAI, region: str, subcategory: str, r
         **1. [Specific Project Name]**
         *Project Description:* [50-75 words]
         *Data-Based Justification:* [Reference regional analysis - 75-100 words]
+        *Research-Based Justification:* [Reference regional summary - 75-100 words]
         *Implementation Actions:*
             1. [Municipal-level action]
             2. [Policy or regulatory action]
@@ -200,6 +200,7 @@ def get_final_projects(client: OpenAI, region: str, subcategory: str, initial_re
             - *Project Description:* [~50 words]
             - *Location:* [specific location]
             ...
+            - *Project Recommendation Addressed:* [project recommendation name]
             - *URL:* [project URL]
 
         ... (repeat for 5 projects)
