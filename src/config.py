@@ -222,3 +222,78 @@ CHART_COLORS = {
     "region_neutral": "#757575",
     "national": "#1e88e5",
 }
+
+# Optional manual source badges per indicator (extend as needed)
+INDICATOR_SOURCES = {
+    "PM 2.5 concentration (unit: µg/m3)": [
+        {"label": "OpenWeatherMaps Air Pollution", "url": "https://openweathermap.org/api/air-pollution"},
+    ],
+    "NO2 concentration (unit: µg/m3)": [
+        {"label": "OpenWeatherMaps Air Pollution", "url": "https://openweathermap.org/api/air-pollution"},
+    ],
+    "PM 10 concentration (unit: µg/m3)": [
+        {"label": "OpenWeatherMaps Air Pollution", "url": "https://openweathermap.org/api/air-pollution"},
+    ],
+    "Accessibility to Health Services (unit: %)": [
+        {"label": "OpenStreetMaps", "url": "https://openstreetmap.org/"},
+        {"label": "WorldPop New Global 2 Population Data", "url": "https://hub.worldpop.org/project/categories?id=3"},
+    ],
+    "Accessibility to School Services (unit: %)": [
+        {"label": "OpenStreetMaps", "url": "https://openstreetmap.org/"},
+        {"label": "WorldPop New Global 2 Population Data", "url": "https://hub.worldpop.org/project/categories?id=3"},
+    ],
+    "Diversity of Health Services": [
+        {"label": "OpenWeatherMaps", "url": "https://openweathermap.org/"},
+    ],
+    "Key Structure Average Broadband Download Speed (unit: megabites per second)": [
+        {"label": "Ookla Speedtest Global Performance", "url": "https://registry.opendata.aws/speedtest-global-performance/"},
+        {"label": "OpenStreetMaps", "url": "https://openstreetmap.org/"},
+    ],
+    "Average Cellular Download Speed (unit: megabites per second)": [
+        {"label": "Ookla Speedtest Global Performance", "url": "https://registry.opendata.aws/speedtest-global-performance/"},
+    ],
+    "Key Structures without Internet Access (unit: %)": [
+        {"label": "Ookla Speedtest Global Performance", "url": "https://registry.opendata.aws/speedtest-global-performance/"},
+        {"label": "OpenStreetMaps", "url": "https://openstreetmap.org/"},
+    ],
+    "Road flood risk per capita (unit: km per capita)": [
+        {"label": "OpenStreetMaps", "url": "https://openstreetmap.org/"},
+        {"label": "WorldPop New Global 2 Population Data", "url": "https://hub.worldpop.org/project/categories?id=3"},
+        {"label": "WRI Aqueduct Floods Hazard Maps Version 2", "url": "https://developers.google.com/earth-engine/datasets/catalog/WRI_Aqueduct_Flood_Hazard_Maps_V2"},
+        {"label": "PIMxPAM Climate Risk Threshold Database", "url": "https://gpbprtd.eu.pythonanywhere.com/"},
+    ],
+    "Road heatwave risk per capita (unit: km per capita)": [
+        {"label": "OpenStreetMaps", "url": "https://openstreetmap.org/"},
+        {"label": "WorldPop New Global 2 Population Data", "url": "https://hub.worldpop.org/project/categories?id=3"},
+        {"label": "ERA5 Hourly Reanalysis", "url": "https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels?tab=overview"},
+        {"label": "PIMxPAM Climate Risk Threshold Database", "url": "https://gpbprtd.eu.pythonanywhere.com/"},
+    ],
+    "Railway flood risk per capita (unit: km per capita)": [
+        {"label": "OpenStreetMaps", "url": "https://openstreetmap.org/"},
+        {"label": "WorldPop New Global 2 Population Data", "url": "https://hub.worldpop.org/project/categories?id=3"},
+        {"label": "WRI Aqueduct Floods Hazard Maps Version 2", "url": "https://developers.google.com/earth-engine/datasets/catalog/WRI_Aqueduct_Flood_Hazard_Maps_V2"},
+        {"label": "PIMxPAM Climate Risk Threshold Database", "url": "https://gpbprtd.eu.pythonanywhere.com/"},
+    ],
+    "Railway heatwave risk per capita (unit: km per capita)": [
+        {"label": "OpenStreetMaps", "url": "https://openstreetmap.org/"},
+        {"label": "WorldPop New Global 2 Population Data", "url": "https://hub.worldpop.org/project/categories?id=3"},
+        {"label": "ERA5 Hourly Reanalysis", "url": "https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels?tab=overview"},
+        {"label": "PIMxPAM Climate Risk Threshold Database", "url": "https://gpbprtd.eu.pythonanywhere.com/"},
+    ],
+    "Emissions from all sources (unit: kgCO2e/kg)": [
+        {"label": "Climate Trace", "url": "https://climatetrace.org/data"},
+    ],
+    "Emissions from Coal Power Plants (unit: kgCO2e/kg)": [
+        {"label": "Climate Trace", "url": "https://climatetrace.org/data"},
+    ],
+    "Agriculture Emissions (unit: kgCO2e/kg)": [
+        {"label": "Climate Trace", "url": "https://climatetrace.org/data"},
+    ],
+    "Forestry & Land Use Emissions (unit: kgCO2e/kg)": [
+        {"label": "Climate Trace", "url": "https://climatetrace.org/data"},
+    ],
+    "Nighttime Luminosity (unit: nWatts/(cm2 x sr)": [
+        {"label": "VIIRS Nighttime Day/Night Band Composites Version 1", "url": "https://developers.google.com/earth-engine/datasets/catalog/NOAA_VIIRS_DNB_MONTHLY_V1_VCMCFG"},
+    ],
+}
+

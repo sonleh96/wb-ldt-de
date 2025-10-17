@@ -16,10 +16,11 @@ from src.config import (
 )
 from src.gcs import read_csv_from_gcs, get_image_from_gcs
 from src.caching import ResponseCacheManager
-from src.ui import render_sidebar, render_language_selection, render_main_interface, chart_latest_comparison_bar, chart_trend_sparkline, render_delta_chip, spacer
+from src.ui import render_sidebar, render_language_selection, render_main_interface, chart_latest_comparison_bar, chart_trend_sparkline, render_delta_chip, spacer, render_transparency_badges, render_sources_badges
 from src.analysis import (
     get_indicator_analysis, prepare_regional_analysis_data, filter_projects, get_indicator_series
 )
+from src.config import INDICATOR_SOURCES
 from src.llm import (
     translate_en_to_sr, get_regional_narrative, get_background_research,
     get_initial_recommendations, get_final_projects, get_project_review_document
@@ -360,6 +361,12 @@ if st.session_state.stage >= 2:
         delta_html = render_delta_chip(stats.get("delta"), stats.get("pct_delta"), higher_is_better)
         if delta_html:
             st.markdown(delta_html, unsafe_allow_html=True)
+            
+        # Transparency badges: year, coverage %, gaps
+        render_transparency_badges(stats.get("latest_year"), stats.get("years_min"), stats.get("years_max"), stats.get("coverage_pct"), stats.get("missing_years"))
+
+        # Sources badges (multiple supported)
+        render_sources_badges(INDICATOR_SOURCES.get(full_name))
 
         # Interpretation paragraph (translated if Serbian)
         interpretation_text = interpretations_map.get(full_name)

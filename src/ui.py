@@ -174,6 +174,30 @@ def render_delta_chip(delta: float, pct_delta: float, higher_is_better: bool) ->
     return f"<span style='color:{color}; font-weight:600'>{arrow} {pct_str}</span>"
 
 
+def render_transparency_badges(latest_year, years_min, years_max, coverage_pct, missing_years) -> None:
+    """Render small inline badges: freshness, coverage, and gaps."""
+    freshness = f"Data year: {latest_year}" if latest_year else "Data year: n/a"
+    coverage = f"Coverage: {int(coverage_pct*100)}%" if coverage_pct is not None else "Coverage: n/a"
+    gaps = "Gaps: none" if not missing_years else f"Gaps: {', '.join(str(y) for y in missing_years[:6])}{'…' if len(missing_years) > 6 else ''}"
+    st.caption(f"{freshness} • {coverage} • {gaps}")
+
+
+def render_sources_badges(sources) -> None:
+    """Render a compact list of source badges (supports multiple)."""
+    if not sources:
+        return
+    parts = []
+    for s in sources:
+        label = s.get('label', 'Source')
+        url = s.get('url')
+        if url:
+            parts.append(f"<a href=\"{url}\" target=\"_blank\">{label}</a>")
+        else:
+            parts.append(label)
+    joined = " • ".join(parts)
+    st.caption(f"Sources: {joined}", unsafe_allow_html=True)
+
+
 def chart_latest_comparison_bar(title: str, region_value: float, national_value: float, unit: str, higher_is_better: bool) -> go.Figure:
     region_color = CHART_COLORS["region_good"] if (region_value >= national_value) == higher_is_better else CHART_COLORS["region_bad"]
     fig = go.Figure()

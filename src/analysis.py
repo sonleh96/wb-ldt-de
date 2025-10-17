@@ -96,8 +96,24 @@ def get_indicator_series(
     national_df = extract_national_data(averages_df.reset_index(), cols).rename(columns={indicator_code: full_name})
 
     if regional_df.empty or national_df.empty:
-        return regional_df, national_df, {"latest_region": float('nan'), "latest_national": float('nan'), "delta": float('nan'), "pct_delta": float('nan'), "higher_is_better": INDICATOR_HIGHER_IS_BETTER.get(full_name, True)}
+        return regional_df, national_df, {
+            "latest_region": float('nan'), 
+            "latest_national": float('nan'), 
+            "delta": float('nan'), 
+            "pct_delta": float('nan'), 
+            "higher_is_better": INDICATOR_HIGHER_IS_BETTER.get(full_name, True),
+            "full_name": full_name,
+            "latest_year": float('nan'),
+            "years_available": 0,
+            "years_min": None,
+            "year_max": None,
+            "missing_years": [],
+            "coverage_pct": 0.0,
+        }
 
+    # Coverage / freshness stats
+    years_series = regional_df['year'].dropna().astype(int)
+    latest_year = int(years_series.max()) if not years_series.empty else None
     latest_year = int(regional_df['year'].max())
     r_latest = regional_df[regional_df['year'] == latest_year][full_name].iloc[0]
     n_latest_row = national_df[national_df['year'] == latest_year]
@@ -105,6 +121,13 @@ def get_indicator_series(
 
     delta = r_latest - n_latest if pd.notna(r_latest) and pd.notna(n_latest) else float('nan')
     pct_delta = (delta / n_latest) if pd.notna(delta) and n_latest not in (0, float('nan')) else float('nan')
+    years_min = int(years_series.min()) if not years_series.empty else None
+    years_max = int(years_series.max()) if not years_series.empty else None
+    full_range = list(range(years_min, years_max + 1)) if years_min is not None and years_max is not None else []
+    available_years = sorted(set(years_series.tolist())) if not years_series.empty else []
+    missing_years = [y for y in full_range if y not in available_years]
+    coverage_pct = (len(available_years) / len(full_range)) if full_range else 0.0
+    
     return regional_df, national_df, {
         "latest_region": r_latest,
         "latest_national": n_latest,
@@ -113,6 +136,11 @@ def get_indicator_series(
         "higher_is_better": INDICATOR_HIGHER_IS_BETTER.get(full_name, True),
         "full_name": full_name,
         "latest_year": latest_year,
+        "years_available": len(available_years),
+        "years_min": years_min,
+        "years_max": years_max,
+        "missing_years": missing_years,
+        "coverage_pct": coverage_pct,
     }
 
 def filter_projects(df_projects: pd.DataFrame, subcategory: str) -> pd.DataFrame:
