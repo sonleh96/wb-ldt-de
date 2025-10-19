@@ -42,6 +42,7 @@ def render_sidebar(pimpam_logo: Image.Image, gpbp_logo: Image.Image, cache_manag
                 This tool not only centralizes and streamlines various remote sensing and geospatial data sources, but also leverages key insights from complementary platforms and digital apps on the PimPam GPBP, such as:
                 <li><a href="https://cbd.pim-pam.net/" target="_blank">Country Benchmarking Dashboard</a> (CBD)</li>
                 <li><a href="https://gpbp.adamplatform.eu/" target="_blank">Climate Change Screening Tool</a> (CCS)</li>
+                <li><a href="https://gpbprtd.eu.pythonanywhere.com/" target="_blank">Climate Risk Threshold Database</a> (RTD)</li>
                 <li><a href="https://www.figma.com/proto/MRIuLeqyVOFGJQwVi0sVAg/PIA-final?node-id=14101-76623&p=f&t=wMUuiwyzr7W56K36-0&scaling=min-zoom&content-scaling=fixed&page-id=14101%3A64991&starting-point-node-id=14101%3A76623" target="_blank">Public Infrastructure Access Tool</a> (PIA)</li>
             </div>
             """,
@@ -152,7 +153,27 @@ def render_main_interface(lang: str, regions: list, categories: list):
     
     st.write(ui_text['region_selected'].format(region=region))
     st.write(ui_text['category_selected'].format(category=category))
+    
 
+def render_map_options(years: list, indicators: list):
+    """Renders the map options, including year and indicator selection."""
+        
+    default_year_index = years.index(2024)
+    defaul_indicator_index = indicators.index('Nighttime Luminosity (unit: nWatts/(cm2 x sr)')
+        
+    year = st.selectbox(
+            "Year",
+            years,
+            index=default_year_index,
+            key="option_year"
+    )
+    indicator = st.selectbox(
+            "Indicator",
+            indicators,
+            index=defaul_indicator_index,
+            key="option_indicator"
+    )
+    
 
 # --- Plotly chart helpers ---
 def render_delta_chip(delta: float, pct_delta: float, higher_is_better: bool) -> str:
