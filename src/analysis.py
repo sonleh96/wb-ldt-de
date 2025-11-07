@@ -1,6 +1,7 @@
 from typing import List, Tuple, Dict
 import pandas as pd
 import streamlit as st
+import numpy as np
 
 from src.config import CATEGORY_INDICATOR_DICT, INDICATOR_HIGHER_IS_BETTER
 
@@ -156,3 +157,17 @@ def filter_projects(df_projects: pd.DataFrame, subcategory: str) -> pd.DataFrame
         df_filtered = df_filtered[df_filtered['Status'] != 'Preparation']
         
     return df_filtered
+
+def calculate_indicator_score(indicator: str, df_indicators: pd.DataFrame) -> float:
+    """
+    Calculates the score for a single indicator.
+    """
+    
+    higher_is_better = INDICATOR_HIGHER_IS_BETTER.get(indicator, True)
+    
+    if higher_is_better:
+        return np.round(df_indicators[indicator].rank(pct=True) * 100, 2)
+    else:
+        return np.round(100 - df_indicators[indicator].rank(pct=True) * 100, 2)
+    
+    

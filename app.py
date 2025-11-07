@@ -8,6 +8,8 @@ import streamlit as st
 from openai import OpenAI
 from google.oauth2 import service_account
 from google.cloud import storage
+import numpy as np
+import pandas as pd
 
 import plotly.express as px
 
@@ -19,9 +21,9 @@ from src.config import (
 from src.gcs import read_csv_from_gcs, get_image_from_gcs, read_geojson_from_gcs
 from src.caching import ResponseCacheManager
 from src.ui import (render_sidebar, render_language_selection, render_main_interface, chart_latest_comparison_bar, chart_trend_sparkline, 
-                    render_delta_chip, spacer, render_transparency_badges, render_sources_badges, render_map_options)
+                    render_delta_chip, spacer, render_transparency_badges, render_sources_badges, render_map_options, render_scatterplot_options, remove_unit_suffix)
 from src.analysis import (
-    get_indicator_analysis, prepare_regional_analysis_data, filter_projects, get_indicator_series
+    get_indicator_analysis, prepare_regional_analysis_data, filter_projects, get_indicator_series, calculate_indicator_score
 )
 from src.config import INDICATOR_SOURCES
 from src.llm import (
@@ -108,46 +110,191 @@ gpbp_logo = get_image_from_gcs(storage_client, BUCKET_NAME, "decision_engine/inp
 render_sidebar(pimpam_logo, gpbp_logo, cache_manager)
 
 
-choropleth, decision_engine = st.tabs(["🗺️ Map", 
+choropleth, scatterplot,decision_engine = st.tabs(["🗺️ Map", 
+                                       "📊 Scatterplot",
                                        "🤖 Decision Engine"])
 
 with choropleth:
     st.header("🗺️ Map")
     st.write("This is a map of Serbia.")
     
-    render_map_options(gdf_score_geom['year'].unique().tolist(), gdf_score_geom.columns[4:-1].to_list())
+    df_choropleth = gdf_score_geom.drop(['rail_length_flood_risk', 'population_total'], axis=1)
+    
+    render_map_options(df_choropleth['year'].unique().tolist(), df_choropleth.columns[4:-1].to_list())
     
     year = st.session_state.option_year
     indicator = st.session_state.option_indicator
     
-    slice = gdf_score_geom[['ENGLISH_NAME', 'year', indicator, 'geometry']]
-    slice = slice[slice['year'] == year]
-    slice[f'{indicator}_score'] = slice[indicator].rank(pct=True) * 100
+    slice_choropleth = df_choropleth[['ENGLISH_NAME', 'year', indicator, 'geometry']]
+    slice_choropleth = slice_choropleth[slice_choropleth['year'] == year]
+    slice_choropleth[f'{indicator}_score'] = calculate_indicator_score(indicator, df_choropleth)
 
-    geojson_data = slice.__geo_interface__
+    geojson_data = slice_choropleth.__geo_interface__
 
 
     # Plot
     fig = px.choropleth(
-        slice,
+        slice_choropleth,
         geojson=geojson_data,
         locations='ENGLISH_NAME',
         featureidkey='properties.ENGLISH_NAME',
         color=f'{indicator}_score',
-        color_continuous_scale="Reds",
+        color_continuous_scale="RdYlGn",
         range_color=(0, 100),
         hover_data=['ENGLISH_NAME', indicator],
         labels={"ENGLISH_NAME": "Municipality",indicator: f"{indicator} (%)", f'{indicator}_score': f'{indicator} Score'},
-        title=f'{indicator} in Europe, {year}',
+        title=f'{indicator} in Serbia, {year}',
         scope='europe',
         width=1000,
         height=1000
     )
 
     fig.update_geos(fitbounds="locations", visible=False)
-    fig.update_layout(margin={"r":0,"t":40,"l":0,"b":0})
+    fig.update_layout(margin={"r":0,"t":40,"l":0,"b":0},
+                    coloraxis_colorbar_title_text=f'{remove_unit_suffix(indicator)} Score',
+                    coloraxis_colorbar_title_font=dict(
+                        size=14,
+                        color="black"
+                    ))
     
     st.plotly_chart(fig, use_container_width=True)
+    
+
+with scatterplot:
+    st.header("📊 Scatterplot")
+    st.write("This is a scatterplot of Serbia.")
+    
+    df_scatter = pd.DataFrame(gdf_score_geom.drop(['rail_length_flood_risk', 'population_total'], axis=1))
+    
+    indicators_x = ["Accessibility to Health Services (unit: %)",
+                                "Accessibility to School Services (unit: %)",
+                                "Diversity of Health Services",
+                                "PM 2.5 concentration (unit: µg/m3)",
+                                "PM 10 concentration (unit: µg/m3)",
+                                "NO2 concentration (unit: µg/m3)",
+                                "Emissions from all sources (unit: kgCO2e/kg)",
+                                "Emissions from Coal Power Plants (unit: kgCO2e/kg)",
+                                "Agriculture Emissions (unit: kgCO2e/kg)",
+                                "Forestry & Land Use Emissions (unit: kgCO2e/kg)"]
+    
+    indicators_y = ["Nighttime Luminosity (unit: nWatts/(cm2 x sr)",
+                                "Key Structure Average Broadband Download Speed (unit: megabites per second)",
+                                "Average Cellular Download Speed (unit: megabites per second)",
+                                "Key Structures without Internet Access (unit: %)",
+                                "Road flood risk per capita (unit: km per capita)",
+                                "Road heatwave risk per capita (unit: km per capita)",
+                                "Railway flood risk per capita (unit: km per capita)",
+                                "Railway heatwave risk per capita (unit: km per capita)"]
+    
+    render_scatterplot_options(df_scatter['year'].unique().tolist(), indicators_x, indicators_y)
+    
+    year = st.session_state.option_year_scatterplot
+    indicator_x = st.session_state.option_indicator_x
+    indicator_y = st.session_state.option_indicator_y
+    
+    slice_scatter = df_scatter[['ENGLISH_NAME', 'year', indicator_x, indicator_y]]
+    slice_scatter = slice_scatter[slice_scatter['year'] == year]
+    
+    x_score_name = remove_unit_suffix(indicator_x)
+    y_score_name = remove_unit_suffix(indicator_y)
+    slice_scatter[x_score_name] = calculate_indicator_score(indicator_x, df_scatter)
+    slice_scatter[y_score_name] = calculate_indicator_score(indicator_y, df_scatter)
+    
+    custom_data = slice_scatter[['ENGLISH_NAME', 
+                         x_score_name, y_score_name,
+                         indicator_x, indicator_y]]
+    
+    x_vals = slice_scatter[x_score_name].astype(float)
+    y_vals = slice_scatter[y_score_name].astype(float)
+    x_min, x_max = float(x_vals.min()), float(x_vals.max())
+    y_min, y_max = float(y_vals.min()), float(y_vals.max())
+    x_mid = (x_min + x_max) / 2
+    y_mid = (y_min + y_max) / 2
+
+
+    fig = px.scatter(
+        slice_scatter,
+        x=x_score_name,
+        y=y_score_name,
+        hover_data=None,
+        custom_data=custom_data,
+        labels={
+            "ENGLISH_NAME": "Municipality",
+            x_score_name: f'{x_score_name} Score',
+            y_score_name: f'{y_score_name} Score',
+            indicator_x: f"{indicator_x}",
+            indicator_y: f"{indicator_y}",
+        },
+        title=f'{indicator_x} vs {indicator_y} in Serbia, {year}',
+        width=1000, height=1000
+    )
+    
+    # Set explicit axis ranges so shapes align perfectly
+    fig.update_xaxes(range=[x_min, x_max])
+    fig.update_yaxes(range=[y_min, y_max])
+
+    # Add quadrant shading (low opacity so points stay visible)
+    fig.add_shape(type="rect", xref="x", yref="y",
+                x0=x_mid, x1=x_max, y0=y_mid, y1=y_max,
+                fillcolor="green", opacity=0.10, line_width=0, layer="below")     # Top Right
+
+    fig.add_shape(type="rect", xref="x", yref="y",
+                x0=x_min, x1=x_mid, y0=y_mid, y1=y_max,
+                fillcolor="yellow", opacity=0.10, line_width=0, layer="below")    # Top Left
+
+    fig.add_shape(type="rect", xref="x", yref="y",
+                x0=x_mid, x1=x_max, y0=y_min, y1=y_mid,
+                fillcolor="yellow", opacity=0.10, line_width=0, layer="below")    # Bottom Right
+
+    fig.add_shape(type="rect", xref="x", yref="y",
+                x0=x_min, x1=x_mid, y0=y_min, y1=y_mid,
+                fillcolor="red", opacity=0.10, line_width=0, layer="below")       # Bottom Left
+    
+    # Add quadrant labels at each quadrant center
+    fig.add_annotation(x=(x_mid + x_max)/2, y=(y_mid + y_max)/2,
+                    text="High Prosperity and Livability", showarrow=False, font=dict(size=20, color="green"))
+    fig.add_annotation(x=(x_min + x_mid)/2, y=(y_mid + y_max)/2,
+                    text="High Prosperity, Low Livability", showarrow=False, font=dict(size=20, color="#a67c00"))
+    fig.add_annotation(x=(x_mid + x_max)/2, y=(y_min + y_mid)/2,
+                    text="Low Prosperity, High Livability", showarrow=False, font=dict(size=20, color="#a67c00"))
+    fig.add_annotation(x=(x_min + x_mid)/2, y=(y_min + y_mid)/2,
+                    text="Low Prosperity and Livability", showarrow=False, font=dict(size=20, color="red"))
+
+    # Add crosshair lines at the midpoints
+    fig.add_vline(x=x_mid, line_width=2, line_dash="dash", line_color="black")
+    fig.add_hline(y=y_mid, line_width=2, line_dash="dash", line_color="black")
+
+    fig.update_traces(
+        hovertemplate=(
+            "<b>%{customdata[0]}</b><br>"
+            f"{x_score_name} Score: %{{customdata[1]:.0f}}<br>"
+            f"{y_score_name} Score: %{{customdata[2]:.0f}}<br>"
+            f"{indicator_x}: %{{customdata[3]:.2f}}<br>"
+            f"{indicator_y}: %{{customdata[4]:.2f}}"
+            "<extra></extra>"
+        ),
+        marker=dict(color='black')
+    )
+    
+    fig.update_layout(
+        title=dict(text=f"{y_score_name} vs {x_score_name} in Serbia, {year}",
+                font=dict(size=27), x=0.5, xanchor='center'),
+        xaxis_title=f'{x_score_name} Score',
+        yaxis_title=f'{y_score_name} Score',
+        xaxis=dict(tickfont=dict(size=19), showline=True, linecolor="black", linewidth=2, ticks="outside", tickwidth=2, tickcolor="black"),
+        yaxis=dict(tickfont=dict(size=19), showline=True, linecolor="black", linewidth=2, ticks="outside", tickwidth=2, tickcolor="black"),
+        xaxis_title_font=dict(size=23),
+        yaxis_title_font=dict(size=23),
+        plot_bgcolor="white",
+        height=1000,
+        width=1000
+    )
+
+    # Hide the colorbar
+    fig.update_coloraxes(showscale=False)
+
+    st.plotly_chart(fig, use_container_width=True)
+
 
 with decision_engine:
     lang_code = render_language_selection()

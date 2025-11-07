@@ -4,6 +4,7 @@ from datetime import datetime
 
 import streamlit as st
 from PIL import Image
+import re
 
 from src.config import UI_TEXT, CHART_COLORS, DELTA_THRESHOLDS
 import plotly.graph_objects as go
@@ -174,6 +175,34 @@ def render_map_options(years: list, indicators: list):
             key="option_indicator"
     )
     
+    return None
+    
+
+def render_scatterplot_options(years: list, indicators_x: list, indicators_y: list):
+    """Renders the scatterplot options, including year and indicator selection."""
+    
+    year = st.selectbox(
+        "Year",
+        years,
+        index=years.index(2024),
+        key="option_year_scatterplot"
+    )
+    
+    indicator_x = st.selectbox(
+        "Livability Indicator",
+        indicators_x,
+        index=indicators_x.index('Emissions from all sources (unit: kgCO2e/kg)'),
+        key="option_indicator_x"
+    )
+    
+    indicator_y = st.selectbox(
+        "Prosperity Indicator",
+        indicators_y,
+        index=indicators_y.index('Nighttime Luminosity (unit: nWatts/(cm2 x sr)'),
+        key="option_indicator_y"
+    )
+    
+    return None
 
 # --- Plotly chart helpers ---
 def render_delta_chip(delta: float, pct_delta: float, higher_is_better: bool) -> str:
@@ -281,3 +310,12 @@ def chart_trend_sparkline(title: str, regional_df, national_df, value_col: str, 
 
 def spacer(px=24):
     st.markdown(f"<div style='height:{px}px'></div>", unsafe_allow_html=True)
+    
+def remove_unit_suffix(text: str) -> str:
+    """
+    Removes anything from ' (unit' (case-insensitive) onward from a given string.
+    Example: 
+        'Accessibility to Health Services (unit: %)' 
+        → 'Accessibility to Health Services'
+    """
+    return re.sub(r'\s*\(unit.*', '', text, flags=re.IGNORECASE).strip()
