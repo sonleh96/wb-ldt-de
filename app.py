@@ -10,6 +10,8 @@ from google.oauth2 import service_account
 from google.cloud import storage
 import numpy as np
 import pandas as pd
+import esda
+import libpysal as lps
 
 import plotly.express as px
 
@@ -82,6 +84,7 @@ def load_data(_storage_client):
     df_indicators = read_csv_from_gcs(
         _storage_client, BUCKET_NAME, "decision_engine/inputs/SRB Absolute Full_v4.csv"
     )
+    
     df_projects = read_csv_from_gcs(
         _storage_client, BUCKET_NAME, "decision_engine/inputs/wbif_project_examples_v2.csv", sep=";"
     )
@@ -90,7 +93,7 @@ def load_data(_storage_client):
     )
     
     gdf_score_geom = read_geojson_from_gcs(
-        _storage_client, BUCKET_NAME, "decision_engine/inputs/SRB_Score_geom_v4.json"
+        _storage_client, BUCKET_NAME, "decision_engine/inputs/SRB_Score_geom_v5.json"
     )
     
     regions_en = df_indicators["ENGLISH_NAME"].unique().tolist()
@@ -115,8 +118,8 @@ choropleth, scatterplot,decision_engine = st.tabs(["🗺️ Map",
                                        "🤖 Decision Engine"])
 
 with choropleth:
-    st.header("🗺️ Map")
-    st.write("This is a map of Serbia.")
+    st.header("🗺️ Spatial Mapping")
+    # st.write("This is a map of Serbia.")
     
     df_choropleth = gdf_score_geom.drop(['rail_length_flood_risk', 'population_total'], axis=1)
     
@@ -127,11 +130,25 @@ with choropleth:
     
     slice_choropleth = df_choropleth[['ENGLISH_NAME', 'year', indicator, 'geometry']]
     slice_choropleth = slice_choropleth[slice_choropleth['year'] == year]
-    slice_choropleth[f'{indicator}_score'] = calculate_indicator_score(indicator, df_choropleth)
-
+    slice_choropleth[f'{indicator}_score'] = calculate_indicator_score(indicator, slice_choropleth)
     geojson_data = slice_choropleth.__geo_interface__
-
-
+    
+    wq = lps.weights.Queen.from_dataframe(slice_choropleth, use_index=False, silence_warnings=True)
+    wq.transform = "r"
+    y = slice_choropleth[indicator]
+    np.random.seed(12345)
+    global_mi = esda.moran.Moran(y, wq)
+    global_significance = 'Significant' if global_mi.p_sim < 0.05 else 'Not Significant'
+    
+    local_mi = esda.moran.Moran_Local(y, wq)
+    region_local_significance = f'{((local_mi.p_sim < 0.05).sum() / len(slice_choropleth)) * 100:.1f}'
+    
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Municipalities", len(slice_choropleth))
+    col2.metric("Global Spatial Autocorrelation", global_significance)
+    col3.metric("Municipalities with Significant Local Spatial Autocorrelation", f'{region_local_significance}%')
+    
+    
     # Plot
     fig = px.choropleth(
         slice_choropleth,
@@ -142,8 +159,10 @@ with choropleth:
         color_continuous_scale="RdYlGn",
         range_color=(0, 100),
         hover_data=['ENGLISH_NAME', indicator],
-        labels={"ENGLISH_NAME": "Municipality",indicator: f"{indicator} (%)", f'{indicator}_score': f'{indicator} Score'},
-        title=f'{indicator} in Serbia, {year}',
+        labels={"ENGLISH_NAME": "Municipality",
+                indicator: f"{indicator}", 
+                f'{indicator}_score': f'{remove_unit_suffix(indicator)} Score'},
+        title=f'{remove_unit_suffix(indicator)} in Serbia, {year}',
         scope='europe',
         width=1000,
         height=1000
@@ -151,13 +170,90 @@ with choropleth:
 
     fig.update_geos(fitbounds="locations", visible=False)
     fig.update_layout(margin={"r":0,"t":40,"l":0,"b":0},
-                    coloraxis_colorbar_title_text=f'{remove_unit_suffix(indicator)} Score',
-                    coloraxis_colorbar_title_font=dict(
-                        size=14,
-                        color="black"
-                    ))
+                      coloraxis_colorbar_title_text=f'{remove_unit_suffix(indicator)} Score',
+                      coloraxis_colorbar_title_font=dict(
+                        size=15,
+                        color="black"),
+                      title=dict(text=f'{remove_unit_suffix(indicator)} in Serbia, {year}',
+                                 font=dict(size=30, color="black")),
+                      )
     
     st.plotly_chart(fig, use_container_width=True)
+    np.random.seed(12345)
+    sig = 1 * (local_mi.p_sim < 0.05)
+    hh = 1 * (sig * local_mi.q == 1)
+    ll = 2 * (sig * local_mi.q == 2)
+    hl = 3 * (sig * local_mi.q == 3)
+    lh = 4 * (sig * local_mi.q == 4)
+    spots = hh + ll + hl + lh
+    
+    spot_labels = [
+        "Not Significant",
+        "High-High (Hotspot)",
+        "Low-Low (Coldspot)",
+        "High-Low",
+        "Low-High",
+    ]
+    labels = [spot_labels[i] for i in spots]
+
+    # attach label to the GeoDataFrame slice
+    slice_choropleth["cl"] = labels
+
+    # consistent legend order + colors
+    category_order = {"cl": spot_labels}
+    color_map = {
+        "Not Significant": "lightgrey",
+        "High-High (Hotspot)": "red",
+        "Low-Low (Coldspot)": "lightblue",
+        "High-Low (Outlier)": "green",
+        "Low-High (Outlier)": "yellow",
+    }
+
+    # geojson from the slice itself (ensures one-to-one match)
+    geojson_data = json.loads(slice_choropleth.to_json())
+
+    fig_li = px.choropleth(
+        slice_choropleth,
+        geojson=geojson_data,
+        locations="ENGLISH_NAME",
+        featureidkey="properties.ENGLISH_NAME",
+        color="cl",
+        category_orders=category_order,
+        color_discrete_map=color_map,
+        hover_data=["ENGLISH_NAME", "cl"],
+        labels={"ENGLISH_NAME": "Municipality", "cl": "Cluster Type"},
+        scope="europe",
+    )
+
+    # styling: thin white borders, fit to data, ensure legend shows
+    fig_li.update_traces(marker_line_width=0.5, marker_line_color="white")
+    fig_li.update_geos(fitbounds="locations", visible=False)
+    fig_li.update_layout(
+        margin=dict(l=0, r=0, t=40, b=0),
+        legend_title_text="Cluster Type",
+        showlegend=True,
+        legend=dict(
+            orientation="v",          # vertical legend
+            yanchor="middle",
+            y=0.8,                    # center vertically
+            xanchor="left",
+            x=0.6,                   # 1.02 = just outside the map
+            bgcolor="rgba(255,255,255,0.7)",  # semi-transparent white box
+            # bordercolor="black",
+            borderwidth=0.5,
+            font=dict(size=14)
+        ),
+        title=dict(
+            text="Local Spatial Autocorrelation Clusters",
+            font=dict(size=24),
+            x=0, xanchor="left"
+        ),
+        plot_bgcolor="white",
+        height=1000,
+        width=1000,
+    )
+
+    st.plotly_chart(fig_li, use_container_width=True)
     
 
 with scatterplot:
