@@ -3,6 +3,7 @@ import time
 import re
 from datetime import datetime
 import html as _html
+import difflib
 
 import streamlit as st
 from openai import OpenAI
@@ -14,6 +15,7 @@ import esda
 import libpysal as lps
 
 import plotly.express as px
+import plotly.graph_objects as go
 
 # Local imports
 from src.config import (
@@ -23,7 +25,8 @@ from src.config import (
 from src.gcs import read_csv_from_gcs, get_image_from_gcs, read_geojson_from_gcs
 from src.caching import ResponseCacheManager
 from src.ui import (render_sidebar, render_language_selection, render_main_interface, chart_latest_comparison_bar, chart_trend_sparkline, 
-                    render_delta_chip, spacer, render_transparency_badges, render_sources_badges, render_map_options, render_scatterplot_options, remove_unit_suffix)
+                    render_delta_chip, spacer, render_transparency_badges, render_sources_badges, render_map_options, render_scatterplot_options, 
+                    remove_unit_suffix, normalize)
 from src.analysis import (
     get_indicator_analysis, prepare_regional_analysis_data, filter_projects, get_indicator_series, calculate_indicator_score
 )
@@ -244,7 +247,7 @@ with choropleth:
             font=dict(size=14)
         ),
         title=dict(
-            text="Local Spatial Autocorrelation Clusters",
+            text=f"Local Spatial Autocorrelation in Serbia, {year}",
             font=dict(size=24),
             x=0, xanchor="left"
         ),
@@ -306,8 +309,16 @@ with scatterplot:
     y_min, y_max = float(y_vals.min()), float(y_vals.max())
     x_mid = (x_min + x_max) / 2
     y_mid = (y_min + y_max) / 2
-
-
+    
+    # Build normalized lookup table
+    name_lookup = {normalize(s): s for s in slice_scatter["ENGLISH_NAME"].unique()}
+    
+    # Text input box
+    highlight_txt = st.text_input(
+        "🔎 Highlight a municipality (you can type partial or accent-free name, e.g., sabac or Nis):",
+        value="", placeholder="e.g., sabac or Nis"
+    )
+    
     fig = px.scatter(
         slice_scatter,
         x=x_score_name,
@@ -388,6 +399,54 @@ with scatterplot:
 
     # Hide the colorbar
     fig.update_coloraxes(showscale=False)
+    
+    if highlight_txt.strip():
+        norm_input = normalize(highlight_txt)
+        
+        # 1️⃣ Find substring matches
+        matches = [v for k, v in name_lookup.items() if norm_input in k]
+        
+        # 2️⃣ If no substring matches, find close fuzzy matches
+        if not matches:
+            all_norms = list(name_lookup.keys())
+            close_keys = difflib.get_close_matches(norm_input, all_norms, n=3, cutoff=0.6)
+            matches = [name_lookup[k] for k in close_keys]
+
+        # 3️⃣ If exactly one match, highlight it
+        if len(matches) == 1:
+            name = matches[0]
+            sel = slice_scatter[slice_scatter["ENGLISH_NAME"] == name]
+            fig.add_trace(
+                go.Scatter(
+                    x=sel[x_score_name],
+                    y=sel[y_score_name],
+                    mode="markers+text",
+                    text=sel["ENGLISH_NAME"],
+                    textposition="top center",
+                    name=f"Highlighted: {name}",
+                    marker=dict(
+                        symbol="diamond",
+                        size=20,
+                        line=dict(width=2, color="white"),
+                        color="crimson"
+                    ),
+                    customdata=sel[["ENGLISH_NAME", x_score_name, y_score_name, indicator_x, indicator_y]],
+                    hovertemplate=(
+                        "<b>%{customdata[0]}</b><br>"
+                        f"{x_score_name} Score: %{{customdata[1]:.0f}}<br>"
+                        f"{y_score_name} Score: %{{customdata[2]:.0f}}<br>"
+                        f"{indicator_x}: %{{customdata[3]:.2f}}<br>"
+                        f"{indicator_y}: %{{customdata[4]:.2f}}"
+                        "<extra></extra>"
+                    ),
+                    showlegend=True
+                )
+            )
+            st.success(f"✅ Highlighted: **{name}**")
+        elif len(matches) > 1:
+            st.info(f"Found multiple matches: {', '.join(matches[:5])}...")
+        else:
+            st.warning("No match found. Try typing part of the name or removing accents.")
 
     st.plotly_chart(fig, use_container_width=True)
 

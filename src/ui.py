@@ -5,6 +5,7 @@ from datetime import datetime
 import streamlit as st
 from PIL import Image
 import re
+import unicodedata
 
 from src.config import UI_TEXT, CHART_COLORS, DELTA_THRESHOLDS
 import plotly.graph_objects as go
@@ -319,3 +320,10 @@ def remove_unit_suffix(text: str) -> str:
         → 'Accessibility to Health Services'
     """
     return re.sub(r'\s*\(unit.*', '', text, flags=re.IGNORECASE).strip()
+
+# Function to normalize names (remove accents and lowercase)
+def normalize(text):
+    return ''.join(
+        c for c in unicodedata.normalize('NFKD', str(text))
+        if not unicodedata.combining(c)
+    ).lower().strip()
