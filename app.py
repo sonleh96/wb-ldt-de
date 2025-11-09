@@ -26,7 +26,7 @@ from src.gcs import read_csv_from_gcs, get_image_from_gcs, read_geojson_from_gcs
 from src.caching import ResponseCacheManager
 from src.ui import (render_sidebar, render_language_selection, render_main_interface, chart_latest_comparison_bar, chart_trend_sparkline, 
                     render_delta_chip, spacer, render_transparency_badges, render_sources_badges, render_map_options, render_scatterplot_options, 
-                    remove_unit_suffix, normalize)
+                    remove_unit_suffix, normalize, render_choropleth_text)
 from src.analysis import (
     get_indicator_analysis, prepare_regional_analysis_data, filter_projects, get_indicator_series, calculate_indicator_score
 )
@@ -182,6 +182,9 @@ with choropleth:
                       )
     
     st.plotly_chart(fig, use_container_width=True)
+    
+    render_choropleth_text()
+    
     np.random.seed(12345)
     sig = 1 * (local_mi.p_sim < 0.05)
     hh = 1 * (sig * local_mi.q == 1)
@@ -247,7 +250,7 @@ with choropleth:
             font=dict(size=14)
         ),
         title=dict(
-            text=f"Local Spatial Autocorrelation in Serbia, {year}",
+            text=f"Local Spatial Autocorrelation of {remove_unit_suffix(indicator)} in Serbia, {year}",
             font=dict(size=24),
             x=0, xanchor="left"
         ),
