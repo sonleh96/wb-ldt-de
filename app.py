@@ -319,7 +319,7 @@ with scatterplot:
     # Text input box
     highlight_txt = st.text_input(
         "🔎 Highlight a municipality (you can type partial or accent-free name, e.g., sabac or Nis):",
-        value="", placeholder="e.g., sabac or Nis"
+        value="Veliko Gradište", placeholder="e.g., sabac or Nis"
     )
     
     fig = px.scatter(
