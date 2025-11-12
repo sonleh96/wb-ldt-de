@@ -184,83 +184,85 @@ with choropleth:
     
     st.plotly_chart(fig, use_container_width=True)
     
-    render_choropleth_text()
+    with st.expander("See Spatial Autocorrelation Analysis"):
     
-    np.random.seed(12345)
-    sig = 1 * (local_mi.p_sim < 0.05)
-    hh = 1 * (sig * local_mi.q == 1)
-    ll = 2 * (sig * local_mi.q == 2)
-    hl = 3 * (sig * local_mi.q == 3)
-    lh = 4 * (sig * local_mi.q == 4)
-    spots = hh + ll + hl + lh
-    
-    spot_labels = [
-        "Not Significant",
-        "High-High (Hotspot)",
-        "Low-Low (Coldspot)",
-        "High-Low",
-        "Low-High",
-    ]
-    labels = [spot_labels[i] for i in spots]
+        render_choropleth_text()
+        
+        np.random.seed(12345)
+        sig = 1 * (local_mi.p_sim < 0.05)
+        hh = 1 * (sig * local_mi.q == 1)
+        ll = 2 * (sig * local_mi.q == 2)
+        hl = 3 * (sig * local_mi.q == 3)
+        lh = 4 * (sig * local_mi.q == 4)
+        spots = hh + ll + hl + lh
+        
+        spot_labels = [
+            "Not Significant",
+            "High-High (Hotspot)",
+            "Low-Low (Coldspot)",
+            "High-Low",
+            "Low-High",
+        ]
+        labels = [spot_labels[i] for i in spots]
 
-    # attach label to the GeoDataFrame slice
-    slice_choropleth["cl"] = labels
+        # attach label to the GeoDataFrame slice
+        slice_choropleth["cl"] = labels
 
-    # consistent legend order + colors
-    category_order = {"cl": spot_labels}
-    color_map = {
-        "Not Significant": "lightgrey",
-        "High-High (Hotspot)": "red",
-        "Low-Low (Coldspot)": "lightblue",
-        "High-Low (Outlier)": "green",
-        "Low-High (Outlier)": "yellow",
-    }
+        # consistent legend order + colors
+        category_order = {"cl": spot_labels}
+        color_map = {
+            "Not Significant": "lightgrey",
+            "High-High (Hotspot)": "red",
+            "Low-Low (Coldspot)": "lightblue",
+            "High-Low (Outlier)": "green",
+            "Low-High (Outlier)": "yellow",
+        }
 
-    # geojson from the slice itself (ensures one-to-one match)
-    geojson_data = json.loads(slice_choropleth.to_json())
+        # geojson from the slice itself (ensures one-to-one match)
+        geojson_data = json.loads(slice_choropleth.to_json())
 
-    fig_li = px.choropleth(
-        slice_choropleth,
-        geojson=geojson_data,
-        locations="ENGLISH_NAME",
-        featureidkey="properties.ENGLISH_NAME",
-        color="cl",
-        category_orders=category_order,
-        color_discrete_map=color_map,
-        hover_data=["ENGLISH_NAME", "cl"],
-        labels={"ENGLISH_NAME": "Municipality", "cl": "Cluster Type"},
-        scope="europe",
-    )
+        fig_li = px.choropleth(
+            slice_choropleth,
+            geojson=geojson_data,
+            locations="ENGLISH_NAME",
+            featureidkey="properties.ENGLISH_NAME",
+            color="cl",
+            category_orders=category_order,
+            color_discrete_map=color_map,
+            hover_data=["ENGLISH_NAME", "cl"],
+            labels={"ENGLISH_NAME": "Municipality", "cl": "Cluster Type"},
+            scope="europe",
+        )
 
-    # styling: thin white borders, fit to data, ensure legend shows
-    fig_li.update_traces(marker_line_width=0.5, marker_line_color="white")
-    fig_li.update_geos(fitbounds="locations", visible=False)
-    fig_li.update_layout(
-        margin=dict(l=0, r=0, t=40, b=0),
-        legend_title_text="Cluster Type",
-        showlegend=True,
-        legend=dict(
-            orientation="v",          # vertical legend
-            yanchor="middle",
-            y=0.8,                    # center vertically
-            xanchor="left",
-            x=0.6,                   # 1.02 = just outside the map
-            bgcolor="rgba(255,255,255,0.7)",  # semi-transparent white box
-            # bordercolor="black",
-            borderwidth=0.5,
-            font=dict(size=14)
-        ),
-        title=dict(
-            text=f"Local Spatial Autocorrelation of {remove_unit_suffix(indicator)} in Serbia, {year}",
-            font=dict(size=24),
-            x=0, xanchor="left"
-        ),
-        plot_bgcolor="white",
-        height=1000,
-        width=1000,
-    )
+        # styling: thin white borders, fit to data, ensure legend shows
+        fig_li.update_traces(marker_line_width=0.5, marker_line_color="white")
+        fig_li.update_geos(fitbounds="locations", visible=False)
+        fig_li.update_layout(
+            margin=dict(l=0, r=0, t=40, b=0),
+            legend_title_text="Cluster Type",
+            showlegend=True,
+            legend=dict(
+                orientation="v",          # vertical legend
+                yanchor="middle",
+                y=0.8,                    # center vertically
+                xanchor="left",
+                x=0.6,                   # 1.02 = just outside the map
+                bgcolor="rgba(255,255,255,0.7)",  # semi-transparent white box
+                # bordercolor="black",
+                borderwidth=0.5,
+                font=dict(size=14)
+            ),
+            title=dict(
+                text=f"Local Spatial Autocorrelation of {remove_unit_suffix(indicator)} in Serbia, {year}",
+                font=dict(size=24),
+                x=0, xanchor="left"
+            ),
+            plot_bgcolor="white",
+            height=1000,
+            width=1000,
+        )
 
-    st.plotly_chart(fig_li, use_container_width=True)
+        st.plotly_chart(fig_li, use_container_width=True)
     
 
 with scatterplot:
