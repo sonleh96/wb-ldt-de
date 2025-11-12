@@ -225,6 +225,17 @@ def render_scatterplot_options(years: list, indicators_x: list, indicators_y: li
     
     return None
 
+def render_3d_scatterplot_options(years: list):
+    """Renders the 3d scatterplot options, including year and indicator selection."""
+    
+    year = st.selectbox(
+        "Year",
+        years,
+        index=years.index(2024),
+        key="option_year_3d_scatterplot")
+    
+    return None
+
 # --- Plotly chart helpers ---
 def render_delta_chip(delta: float, pct_delta: float, higher_is_better: bool) -> str:
     if not isinstance(delta, (int, float)):

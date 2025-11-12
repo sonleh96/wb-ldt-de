@@ -26,7 +26,7 @@ from src.gcs import read_csv_from_gcs, get_image_from_gcs, read_geojson_from_gcs
 from src.caching import ResponseCacheManager
 from src.ui import (render_sidebar, render_language_selection, render_main_interface, chart_latest_comparison_bar, chart_trend_sparkline, 
                     render_delta_chip, spacer, render_transparency_badges, render_sources_badges, render_map_options, render_scatterplot_options, 
-                    remove_unit_suffix, normalize, render_choropleth_text)
+                    remove_unit_suffix, normalize, render_choropleth_text, render_3d_scatterplot_options)
 from src.analysis import (
     get_indicator_analysis, prepare_regional_analysis_data, filter_projects, get_indicator_series, calculate_indicator_score
 )
@@ -292,34 +292,16 @@ with scatterplot:
                     "Road Heatwave Risk (unit: km)",
                     "Prosperity Score"]
     
-    render_scatterplot_options(df_scatter['year'].unique().tolist(), indicators_x, indicators_y)
     
-    year = st.session_state.option_year_scatterplot
-    indicator_x = st.session_state.option_indicator_x
-    indicator_y = st.session_state.option_indicator_y
+    render_3d_scatterplot_options(df_scatter['year'].unique().tolist())
     
-    slice_scatter = df_scatter[['ENGLISH_NAME', 'year', indicator_x, indicator_y]]
-    slice_scatter = slice_scatter[slice_scatter['year'] == year]
-    
-    x_score_name = remove_unit_suffix(indicator_x)
-    y_score_name = remove_unit_suffix(indicator_y)
-
-    slice_scatter[x_score_name] = calculate_indicator_score(indicator_x, df_scatter)
-    slice_scatter[y_score_name] = calculate_indicator_score(indicator_y, df_scatter)
-    
-    custom_data = slice_scatter[['ENGLISH_NAME', 
-                         x_score_name, y_score_name,
-                         indicator_x, indicator_y]]
-    
-    x_vals = slice_scatter[x_score_name].astype(float)
-    y_vals = slice_scatter[y_score_name].astype(float)
-    x_min, x_max = 0, 100
-    y_min, y_max = 0, 100
-    x_mid = (x_min + x_max) / 2
-    y_mid = (y_min + y_max) / 2
+    year = st.session_state.option_year_3d_scatterplot
+    slice_3d = df_scatter[['ENGLISH_NAME', 'year','Livability Score', 'Infrastructure Score', 'Prosperity Score']]
+    slice_3d = slice_3d[slice_3d['year'] == year]
+    slice_3d = slice_3d.rename({'ENGLISH_NAME': 'Municipality'}, axis=1)
     
     # Build normalized lookup table
-    name_lookup = {normalize(s): s for s in slice_scatter["ENGLISH_NAME"].unique()}
+    name_lookup = {normalize(s): s for s in df_scatter["ENGLISH_NAME"].unique()}
     
     # Text input box
     highlight_txt = st.text_input(
@@ -327,86 +309,41 @@ with scatterplot:
         value="Veliko Gradište", placeholder="e.g., sabac or Nis"
     )
     
-    fig = px.scatter(
-        slice_scatter,
-        x=x_score_name,
-        y=y_score_name,
-        hover_data=None,
-        custom_data=custom_data,
-        labels={
-            "ENGLISH_NAME": "Municipality",
-            x_score_name: f'{x_score_name} Score',
-            y_score_name: f'{y_score_name} Score',
-            indicator_x: f"{indicator_x}",
-            indicator_y: f"{indicator_y}",
-        },
-        title=f'{indicator_x} vs {indicator_y} in Serbia, {year}',
-        width=1000, height=1000
+    # 2) Build figure
+    fig_3d = px.scatter_3d(
+        slice_3d,
+        x='Livability Score', y='Infrastructure Score', z='Prosperity Score',
+        hover_data={'Municipality': True,          # show District in tooltip
+                    'Infrastructure Score': ':.2f',
+                    'Prosperity Score': ':.2f',
+                    'Livability Score': ':.2f'}, # hide helper column
+
     )
     
-    # Set explicit axis ranges so shapes align perfectly
-    fig.update_xaxes(range=[x_min, x_max])
-    fig.update_yaxes(range=[y_min, y_max])
-
-    # Add quadrant shading (low opacity so points stay visible)
-    fig.add_shape(type="rect", xref="x", yref="y",
-                x0=x_mid, x1=x_max, y0=y_mid, y1=y_max,
-                fillcolor="green", opacity=0.10, line_width=0, layer="below")     # Top Right
-
-    fig.add_shape(type="rect", xref="x", yref="y",
-                x0=x_min, x1=x_mid, y0=y_mid, y1=y_max,
-                fillcolor="yellow", opacity=0.10, line_width=0, layer="below")    # Top Left
-
-    fig.add_shape(type="rect", xref="x", yref="y",
-                x0=x_mid, x1=x_max, y0=y_min, y1=y_mid,
-                fillcolor="yellow", opacity=0.10, line_width=0, layer="below")    # Bottom Right
-
-    fig.add_shape(type="rect", xref="x", yref="y",
-                x0=x_min, x1=x_mid, y0=y_min, y1=y_mid,
-                fillcolor="red", opacity=0.10, line_width=0, layer="below")       # Bottom Left
-    
-    # Add quadrant labels at each quadrant center
-    fig.add_annotation(x=(x_mid + x_max)/2, y=(y_mid + y_max)/2,
-                    text="High Prosperity and Livability", showarrow=False, font=dict(size=20, color="green"))
-    fig.add_annotation(x=(x_min + x_mid)/2, y=(y_mid + y_max)/2,
-                    text="High Prosperity, Low Livability", showarrow=False, font=dict(size=20, color="#a67c00"))
-    fig.add_annotation(x=(x_mid + x_max)/2, y=(y_min + y_mid)/2,
-                    text="Low Prosperity, High Livability", showarrow=False, font=dict(size=20, color="#a67c00"))
-    fig.add_annotation(x=(x_min + x_mid)/2, y=(y_min + y_mid)/2,
-                    text="Low Prosperity and Livability", showarrow=False, font=dict(size=20, color="red"))
-
-    # Add crosshair lines at the midpoints
-    fig.add_vline(x=x_mid, line_width=2, line_dash="dash", line_color="black")
-    fig.add_hline(y=y_mid, line_width=2, line_dash="dash", line_color="black")
-
-    fig.update_traces(
-        hovertemplate=(
-            "<b>%{customdata[0]}</b><br>"
-            f"{x_score_name} Score: %{{customdata[1]:.0f}}<br>"
-            f"{y_score_name} Score: %{{customdata[2]:.0f}}<br>"
-            f"{indicator_x}: %{{customdata[3]:.2f}}<br>"
-            f"{indicator_y}: %{{customdata[4]:.2f}}"
-            "<extra></extra>"
+    fig_3d.update_layout(
+        title=dict(text="Serbia Municipalities: Development Composite Score Scatter Plot",
+                font=dict(size=27), x=0.5, xanchor='center', y=0.9),
+        scene=dict(
+            xaxis=dict(tickfont=dict(size=17), showline=True, linecolor="black", linewidth=2, ticks="outside", tickwidth=2, tickcolor="black", range=[0, 100]),
+            yaxis=dict(tickfont=dict(size=17), showline=True, linecolor="black", linewidth=2, ticks="outside", tickwidth=2, tickcolor="black", range=[0, 100]),
+            zaxis=dict(tickfont=dict(size=17), showline=True, linecolor="black", linewidth=2, ticks="outside", tickwidth=2, tickcolor="black", range=[0, 100]),
+            aspectratio=dict(x=1, y=1, z=1),  # Equal physical length for all axes
+            aspectmode='manual'  # Use manual aspect ratio (not auto or data)
         ),
-        marker=dict(color='black')
-    )
-    
-    fig.update_layout(
-        title=dict(text=f"{y_score_name} vs {x_score_name} in Serbia, {year}",
-                font=dict(size=27), x=0.5, xanchor='center'),
-        xaxis_title=f'{x_score_name} Score',
-        yaxis_title=f'{y_score_name} Score',
-        xaxis=dict(tickfont=dict(size=19), showline=True, linecolor="black", linewidth=2, ticks="outside", tickwidth=2, tickcolor="black"),
-        yaxis=dict(tickfont=dict(size=19), showline=True, linecolor="black", linewidth=2, ticks="outside", tickwidth=2, tickcolor="black"),
         xaxis_title_font=dict(size=23),
         yaxis_title_font=dict(size=23),
-        plot_bgcolor="white",
-        height=1000,
-        width=1000
+        # zaxis_title_font=dict(size=23),
+        showlegend=True,
+        legend=dict(
+            font=dict(size=20),
+            orientation='h',
+            yanchor='bottom',
+            y=-0.2,
+            xanchor='center',
+            x=0.5
+        ),
+        height=1000, width=1500
     )
-
-    # Hide the colorbar
-    fig.update_coloraxes(showscale=False)
     
     if highlight_txt.strip():
         norm_input = normalize(highlight_txt)
@@ -419,35 +356,27 @@ with scatterplot:
             all_norms = list(name_lookup.keys())
             close_keys = difflib.get_close_matches(norm_input, all_norms, n=3, cutoff=0.6)
             matches = [name_lookup[k] for k in close_keys]
-
-        # 3️⃣ If exactly one match, highlight it
+            
         if len(matches) == 1:
             name = matches[0]
-            sel = slice_scatter[slice_scatter["ENGLISH_NAME"] == name]
-            fig.add_trace(
-                go.Scatter(
-                    x=sel[x_score_name],
-                    y=sel[y_score_name],
-                    mode="markers+text",
-                    text=sel["ENGLISH_NAME"],
-                    textposition="top center",
-                    name=f"Highlighted: {name}",
+            sel = slice_3d[slice_3d["Municipality"] == name]
+            fig_3d.add_trace(
+                go.Scatter3d(
+                    x=sel['Livability Score'],
+                    y=sel['Infrastructure Score'],
+                    z=sel['Prosperity Score'],
+                    mode='markers',
                     marker=dict(
-                        symbol="diamond",
-                        size=20,
-                        line=dict(width=2, color="white"),
-                        color="crimson"
+                        size=10,
+                        color='crimson'
                     ),
-                    customdata=sel[["ENGLISH_NAME", x_score_name, y_score_name, indicator_x, indicator_y]],
+                    name=f"Highlighted: {name}",
+                    showlegend=True,
                     hovertemplate=(
-                        "<b>%{customdata[0]}</b><br>"
-                        f"{x_score_name} Score: %{{customdata[1]:.0f}}<br>"
-                        f"{y_score_name} Score: %{{customdata[2]:.0f}}<br>"
-                        f"{indicator_x}: %{{customdata[3]:.2f}}<br>"
-                        f"{indicator_y}: %{{customdata[4]:.2f}}"
-                        "<extra></extra>"
-                    ),
-                    showlegend=True
+                        "Livability Score: %{x:.2f}<br>"
+                        "Infrastructure Score: %{y:.2f}<br>"
+                        "Prosperity Score: %{z:.2f}<extra></extra>"
+                    )
                 )
             )
             st.success(f"✅ Highlighted: **{name}**")
@@ -455,8 +384,168 @@ with scatterplot:
             st.info(f"Found multiple matches: {', '.join(matches[:5])}...")
         else:
             st.warning("No match found. Try typing part of the name or removing accents.")
+    
+    
+    st.plotly_chart(fig_3d, use_container_width=True)
+    
+    
+    with st.expander("View 2D Scatterplot Options"):
+        render_scatterplot_options(df_scatter['year'].unique().tolist(), indicators_x, indicators_y)
+    
+        year = st.session_state.option_year_scatterplot
+        indicator_x = st.session_state.option_indicator_x
+        indicator_y = st.session_state.option_indicator_y
+        
+        slice_scatter = df_scatter[['ENGLISH_NAME', 'year', indicator_x, indicator_y]]
+        slice_scatter = slice_scatter[slice_scatter['year'] == year]
+        
+        x_score_name = remove_unit_suffix(indicator_x)
+        y_score_name = remove_unit_suffix(indicator_y)
 
-    st.plotly_chart(fig, use_container_width=True)
+        slice_scatter[x_score_name] = calculate_indicator_score(indicator_x, df_scatter)
+        slice_scatter[y_score_name] = calculate_indicator_score(indicator_y, df_scatter)
+        
+        custom_data = slice_scatter[['ENGLISH_NAME', 
+                             x_score_name, y_score_name,
+                             indicator_x, indicator_y]]
+        
+        x_vals = slice_scatter[x_score_name].astype(float)
+        y_vals = slice_scatter[y_score_name].astype(float)
+        x_min, x_max = 0, 100
+        y_min, y_max = 0, 100
+        x_mid = (x_min + x_max) / 2
+        y_mid = (y_min + y_max) / 2
+        
+        fig = px.scatter(
+            slice_scatter,
+            x=x_score_name,
+            y=y_score_name,
+            hover_data=None,
+            custom_data=custom_data,
+            labels={
+                "ENGLISH_NAME": "Municipality",
+                x_score_name: f'{x_score_name} Score',
+                y_score_name: f'{y_score_name} Score',
+                indicator_x: f"{indicator_x}",
+                indicator_y: f"{indicator_y}",
+            },
+            title=f'{indicator_x} vs {indicator_y} in Serbia, {year}',
+            width=1000, height=1000
+        )
+        
+        # Set explicit axis ranges so shapes align perfectly
+        fig.update_xaxes(range=[x_min, x_max])
+        fig.update_yaxes(range=[y_min, y_max])
+
+        # Add quadrant shading (low opacity so points stay visible)
+        fig.add_shape(type="rect", xref="x", yref="y",
+                    x0=x_mid, x1=x_max, y0=y_mid, y1=y_max,
+                    fillcolor="green", opacity=0.10, line_width=0, layer="below")     # Top Right
+
+        fig.add_shape(type="rect", xref="x", yref="y",
+                    x0=x_min, x1=x_mid, y0=y_mid, y1=y_max,
+                    fillcolor="yellow", opacity=0.10, line_width=0, layer="below")    # Top Left
+
+        fig.add_shape(type="rect", xref="x", yref="y",
+                    x0=x_mid, x1=x_max, y0=y_min, y1=y_mid,
+                    fillcolor="yellow", opacity=0.10, line_width=0, layer="below")    # Bottom Right
+
+        fig.add_shape(type="rect", xref="x", yref="y",
+                    x0=x_min, x1=x_mid, y0=y_min, y1=y_mid,
+                    fillcolor="red", opacity=0.10, line_width=0, layer="below")       # Bottom Left
+        
+        # Add quadrant labels at each quadrant center
+        fig.add_annotation(x=(x_mid + x_max)/2, y=(y_mid + y_max)/2,
+                        text="High Prosperity and Livability", showarrow=False, font=dict(size=20, color="green"))
+        fig.add_annotation(x=(x_min + x_mid)/2, y=(y_mid + y_max)/2,
+                        text="High Prosperity, Low Livability", showarrow=False, font=dict(size=20, color="#a67c00"))
+        fig.add_annotation(x=(x_mid + x_max)/2, y=(y_min + y_mid)/2,
+                        text="Low Prosperity, High Livability", showarrow=False, font=dict(size=20, color="#a67c00"))
+        fig.add_annotation(x=(x_min + x_mid)/2, y=(y_min + y_mid)/2,
+                        text="Low Prosperity and Livability", showarrow=False, font=dict(size=20, color="red"))
+
+        # Add crosshair lines at the midpoints
+        fig.add_vline(x=x_mid, line_width=2, line_dash="dash", line_color="black")
+        fig.add_hline(y=y_mid, line_width=2, line_dash="dash", line_color="black")
+
+        fig.update_traces(
+            hovertemplate=(
+                "<b>%{customdata[0]}</b><br>"
+                f"{x_score_name} Score: %{{customdata[1]:.0f}}<br>"
+                f"{y_score_name} Score: %{{customdata[2]:.0f}}<br>"
+                f"{indicator_x}: %{{customdata[3]:.2f}}<br>"
+                f"{indicator_y}: %{{customdata[4]:.2f}}"
+                "<extra></extra>"
+            ),
+            marker=dict(color='black')
+        )
+        
+        fig.update_layout(
+            title=dict(text=f"{y_score_name} vs {x_score_name} in Serbia, {year}",
+                    font=dict(size=27), x=0.5, xanchor='center'),
+            xaxis_title=f'{x_score_name} Score',
+            yaxis_title=f'{y_score_name} Score',
+            xaxis=dict(tickfont=dict(size=19), showline=True, linecolor="black", linewidth=2, ticks="outside", tickwidth=2, tickcolor="black"),
+            yaxis=dict(tickfont=dict(size=19), showline=True, linecolor="black", linewidth=2, ticks="outside", tickwidth=2, tickcolor="black"),
+            xaxis_title_font=dict(size=23),
+            yaxis_title_font=dict(size=23),
+            plot_bgcolor="white",
+            height=1000,
+            width=1000
+        )
+
+        # Hide the colorbar
+        fig.update_coloraxes(showscale=False)
+        
+        if highlight_txt.strip():
+            norm_input = normalize(highlight_txt)
+            
+            # 1️⃣ Find substring matches
+            matches = [v for k, v in name_lookup.items() if norm_input in k]
+            
+            # 2️⃣ If no substring matches, find close fuzzy matches
+            if not matches:
+                all_norms = list(name_lookup.keys())
+                close_keys = difflib.get_close_matches(norm_input, all_norms, n=3, cutoff=0.6)
+                matches = [name_lookup[k] for k in close_keys]
+
+            # 3️⃣ If exactly one match, highlight it
+            if len(matches) == 1:
+                name = matches[0]
+                sel = slice_scatter[slice_scatter["ENGLISH_NAME"] == name]
+                fig.add_trace(
+                    go.Scatter(
+                        x=sel[x_score_name],
+                        y=sel[y_score_name],
+                        mode="markers+text",
+                        text=sel["ENGLISH_NAME"],
+                        textposition="top center",
+                        name=f"Highlighted: {name}",
+                        marker=dict(
+                            symbol="diamond",
+                            size=20,
+                            line=dict(width=2, color="white"),
+                            color="crimson"
+                        ),
+                        customdata=sel[["ENGLISH_NAME", x_score_name, y_score_name, indicator_x, indicator_y]],
+                        hovertemplate=(
+                            "<b>%{customdata[0]}</b><br>"
+                            f"{x_score_name} Score: %{{customdata[1]:.0f}}<br>"
+                            f"{y_score_name} Score: %{{customdata[2]:.0f}}<br>"
+                            f"{indicator_x}: %{{customdata[3]:.2f}}<br>"
+                            f"{indicator_y}: %{{customdata[4]:.2f}}"
+                            "<extra></extra>"
+                        ),
+                        showlegend=True
+                    )
+                )
+                st.success(f"✅ Highlighted: **{name}**")
+            elif len(matches) > 1:
+                st.info(f"Found multiple matches: {', '.join(matches[:5])}...")
+            else:
+                st.warning("No match found. Try typing part of the name or removing accents.")
+
+        st.plotly_chart(fig, use_container_width=True)
 
 
 with decision_engine:
