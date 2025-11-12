@@ -161,7 +161,7 @@ def render_map_options(years: list, indicators: list):
     """Renders the map options, including year and indicator selection."""
         
     default_year_index = years.index(2024)
-    defaul_indicator_index = indicators.index('Nighttime Luminosity (unit: nWatts/(cm2 x sr)')
+    defaul_indicator_index = indicators.index('Prosperity Score')
         
     year = st.selectbox(
             "Year",
@@ -212,7 +212,7 @@ def render_scatterplot_options(years: list, indicators_x: list, indicators_y: li
     indicator_x = st.selectbox(
         "Livability Indicator",
         indicators_x,
-        index=indicators_x.index('Emissions from all sources (unit: kgCO2e/kg)'),
+        index=indicators_x.index("PM 2.5 concentration (unit: µg/m3)"),
         key="option_indicator_x"
     )
     

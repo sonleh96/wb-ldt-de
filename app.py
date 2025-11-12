@@ -30,7 +30,7 @@ from src.ui import (render_sidebar, render_language_selection, render_main_inter
 from src.analysis import (
     get_indicator_analysis, prepare_regional_analysis_data, filter_projects, get_indicator_series, calculate_indicator_score
 )
-from src.config import INDICATOR_SOURCES
+from src.config import INDICATOR_SOURCES, COLUMN_ORDER
 from src.llm import (
     translate_en_to_sr, get_regional_narrative, get_background_research,
     get_initial_recommendations, get_final_projects, get_project_review_document
@@ -96,7 +96,7 @@ def load_data(_storage_client):
     )
     
     gdf_score_geom = read_geojson_from_gcs(
-        _storage_client, BUCKET_NAME, "decision_engine/inputs/SRB_Score_geom_v5.json"
+        _storage_client, BUCKET_NAME, "decision_engine/inputs/SRB_Score_geom_v6.json"
     )
     
     regions_en = df_indicators["ENGLISH_NAME"].unique().tolist()
@@ -124,9 +124,10 @@ with choropleth:
     st.header("🗺️ Spatial Mapping")
     # st.write("This is a map of Serbia.")
     
-    df_choropleth = gdf_score_geom.drop(['rail_length_flood_risk', 'population_total'], axis=1)
+    df_choropleth = gdf_score_geom.drop(['population_total'], axis=1)
+    df_choropleth = df_choropleth[COLUMN_ORDER]
     
-    render_map_options(df_choropleth['year'].unique().tolist(), df_choropleth.columns[4:-1].to_list())
+    render_map_options(df_choropleth['year'].unique().tolist(), df_choropleth.columns[3:-1].to_list())
     
     year = st.session_state.option_year
     indicator = st.session_state.option_indicator
@@ -173,7 +174,7 @@ with choropleth:
 
     fig.update_geos(fitbounds="locations", visible=False)
     fig.update_layout(margin={"r":0,"t":40,"l":0,"b":0},
-                      coloraxis_colorbar_title_text=f'{remove_unit_suffix(indicator)} Score',
+                      coloraxis_colorbar_title_text=f'{remove_unit_suffix(indicator)} Score' if "Score" not in indicator else remove_unit_suffix(indicator),
                       coloraxis_colorbar_title_font=dict(
                         size=15,
                         color="black"),
@@ -266,27 +267,28 @@ with scatterplot:
     st.header("📊 Scatterplot")
     st.write("This is a scatterplot of Serbia.")
     
-    df_scatter = pd.DataFrame(gdf_score_geom.drop(['rail_length_flood_risk', 'population_total'], axis=1))
+    df_scatter = pd.DataFrame(gdf_score_geom.drop(['population_total'], axis=1))
     
-    indicators_x = ["Accessibility to Health Services (unit: %)",
-                                "Accessibility to School Services (unit: %)",
-                                "Diversity of Health Services",
-                                "PM 2.5 concentration (unit: µg/m3)",
-                                "PM 10 concentration (unit: µg/m3)",
-                                "NO2 concentration (unit: µg/m3)",
-                                "Emissions from all sources (unit: kgCO2e/kg)",
-                                "Emissions from Coal Power Plants (unit: kgCO2e/kg)",
-                                "Agriculture Emissions (unit: kgCO2e/kg)",
-                                "Forestry & Land Use Emissions (unit: kgCO2e/kg)"]
+    indicators_x = ["Accessibility to Healthcare Services (unit: %)",
+                    "Accessibility to School Services (unit: %)",
+                    "Diversity of Health Services",
+                    "PM 2.5 concentration (unit: µg/m3)",
+                    "PM 10 concentration (unit: µg/m3)",
+                    "NO2 concentration (unit: µg/m3)",
+                    "Total Methane Emissions (unit: tonnes)",
+                    "Total CO2-Equivalent Emissions (unit: tonnes)",
+                    "Total CO2-Equivalent Emissions from Coal Power Plants (unit: tonnes)",
+                    "Livability Score"]
     
     indicators_y = ["Nighttime Luminosity (unit: nWatts/(cm2 x sr)",
-                                "Key Structure Average Broadband Download Speed (unit: megabites per second)",
-                                "Average Cellular Download Speed (unit: megabites per second)",
-                                "Key Structures without Internet Access (unit: %)",
-                                "Road flood risk per capita (unit: km per capita)",
-                                "Road heatwave risk per capita (unit: km per capita)",
-                                "Railway flood risk per capita (unit: km per capita)",
-                                "Railway heatwave risk per capita (unit: km per capita)"]
+                    "Key Structure Average Broadband Download Speed (unit: megabites per second)",
+                    "Average Cellular Download Speed (unit: megabites per second)",
+                    "Key Structures without Internet Access (unit: %)",
+                    "Railway Flood Risk (unit: km)",
+                    "Road Flood Risk (unit: km)",
+                    "Railway Heatwave Risk (unit: km)",
+                    "Road Heatwave Risk (unit: km)",
+                    "Prosperity Score"]
     
     render_scatterplot_options(df_scatter['year'].unique().tolist(), indicators_x, indicators_y)
     
@@ -299,6 +301,7 @@ with scatterplot:
     
     x_score_name = remove_unit_suffix(indicator_x)
     y_score_name = remove_unit_suffix(indicator_y)
+
     slice_scatter[x_score_name] = calculate_indicator_score(indicator_x, df_scatter)
     slice_scatter[y_score_name] = calculate_indicator_score(indicator_y, df_scatter)
     
@@ -308,8 +311,8 @@ with scatterplot:
     
     x_vals = slice_scatter[x_score_name].astype(float)
     y_vals = slice_scatter[y_score_name].astype(float)
-    x_min, x_max = float(x_vals.min()), float(x_vals.max())
-    y_min, y_max = float(y_vals.min()), float(y_vals.max())
+    x_min, x_max = 0, 100
+    y_min, y_max = 0, 100
     x_mid = (x_min + x_max) / 2
     y_mid = (y_min + y_max) / 2
     

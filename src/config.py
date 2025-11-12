@@ -214,6 +214,52 @@ INDICATOR_HIGHER_IS_BETTER = {
     "Forestry & Land Use Emissions (unit: kgCO2e/kg)": False,
 }
 
+INDICATOR_HIGHER_IS_BETTER_VIZ = {
+    "Accessibility to Healthcare Services (unit: %)": True,
+    "Accessibility to School Services (unit: %)": True,
+    "Diversity of Health Services": True,
+    "PM 2.5 concentration (unit: µg/m3)": False,
+    "PM 10 concentration (unit: µg/m3)": False,
+    "NO2 concentration (unit: µg/m3)": False,
+    "Total Methane Emissions (tonnes)": False,
+    "Total CO2-Equivalent Emissions (tonnes)": False,
+    "Total CO2-Equivalent Emissions from Coal Power Plants (tonnes)": False,
+    "Key Structure Average Broadband Download Speed (unit: megabites per second)": True,
+    "Key Structures without Internet Access (unit: %)": False,
+    "Average Cellular Download Speed (unit: megabites per second)": True,
+    "Nighttime Luminosity (unit: nWatts/(cm2 x sr)": True,
+    "Railway Flood Risk (unit: km)": False,
+    "Road Flood Risk (unit: km)": False,
+    "Railway Heatwave Risk (unit: km)": False,
+    "Road Heatwave Risk (unit: km)": False,
+}
+
+COLUMN_ORDER = [
+    "year",
+    "ENGLISH_NAME",
+    "SERBIAN_NAME_CYRILLIC",
+    "Prosperity Score",
+    "Infrastructure Score",
+    "Livability Score",
+    "Nighttime Luminosity (unit: nWatts/(cm2 x sr)",
+    "Key Structure Average Broadband Download Speed (unit: megabites per second)",
+    "Key Structures without Internet Access (unit: %)",
+    "Average Cellular Download Speed (unit: megabites per second)",
+    "Accessibility to Healthcare Services (unit: %)",
+    "Accessibility to School Services (unit: %)",
+    "Diversity of Health Services",
+    "PM 2.5 concentration (unit: µg/m3)",
+    "PM 10 concentration (unit: µg/m3)",
+    "NO2 concentration (unit: µg/m3)",
+    "Total Methane Emissions (unit: tonnes)",
+    "Total CO2-Equivalent Emissions (unit: tonnes)",
+    "Total CO2-Equivalent Emissions from Coal Power Plants (unit: tonnes)",
+    "Railway Flood Risk (unit: km)",
+    "Road Flood Risk (unit: km)",
+    "Railway Heatwave Risk (unit: km)",
+    "Road Heatwave Risk (unit: km)",
+    "geometry"]
+
 DELTA_THRESHOLDS = {"good": 0.10, "warn": 0.03}
 
 CHART_COLORS = {
