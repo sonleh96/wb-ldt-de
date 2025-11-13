@@ -154,7 +154,7 @@ with choropleth:
     
     
     # Plot
-    fig = px.choropleth(
+    fig = px.choropleth_map(
         slice_choropleth,
         geojson=geojson_data,
         locations='ENGLISH_NAME',
@@ -167,7 +167,11 @@ with choropleth:
                 indicator: f"{indicator}", 
                 f'{indicator}_score': f'{remove_unit_suffix(indicator)} Score'},
         title=f'{remove_unit_suffix(indicator)} in Serbia, {year}',
-        scope='europe',
+        mapbox_style="carto-positron",  # 👈 OSM basemap (free)
+        center={"lat": 44.0, "lon": 21.0},  # 👈 Center on Serbia
+        zoom=6.5,  # 👈 Adjust zoom level for Serbia
+        opacity=0.7,  # 👈 Make choropleth semi-transparent to see basemap
+        # scope='europe',
         width=1000,
         height=1000
     )
@@ -221,7 +225,7 @@ with choropleth:
         # geojson from the slice itself (ensures one-to-one match)
         geojson_data = json.loads(slice_choropleth.to_json())
 
-        fig_li = px.choropleth(
+        fig_li = px.choropleth_map(
             slice_choropleth,
             geojson=geojson_data,
             locations="ENGLISH_NAME",
@@ -231,7 +235,10 @@ with choropleth:
             color_discrete_map=color_map,
             hover_data=["ENGLISH_NAME", "cl"],
             labels={"ENGLISH_NAME": "Municipality", "cl": "Cluster Type"},
-            scope="europe",
+            mapbox_style="carto-positron",
+            center={"lat": 44.0, "lon": 21.0},
+            zoom=6.5,
+            opacity=0.7,
         )
 
         # styling: thin white borders, fit to data, ensure legend shows
@@ -286,10 +293,10 @@ with scatterplot:
                     "Key Structure Average Broadband Download Speed (unit: megabites per second)",
                     "Average Cellular Download Speed (unit: megabites per second)",
                     "Key Structures without Internet Access (unit: %)",
-                    "Railway Flood Risk (unit: km)",
-                    "Road Flood Risk (unit: km)",
-                    "Railway Heatwave Risk (unit: km)",
-                    "Road Heatwave Risk (unit: km)",
+                    "Railway Flood Risk (unit: %)",
+                    "Road Flood Risk (unit: %)",
+                    "Railway Heatwave Risk (unit: %)",
+                    "Road Heatwave Risk (unit: %)",
                     "Prosperity Score"]
     
     
@@ -321,7 +328,7 @@ with scatterplot:
     )
     
     fig_3d.update_layout(
-        title=dict(text="Serbia Municipalities: Development Composite Score Scatter Plot",
+        title=dict(text="Serbia Municipalities: Composite Score 3D Scatter Plot",
                 font=dict(size=27), x=0.5, xanchor='center', y=0.9),
         scene=dict(
             xaxis=dict(tickfont=dict(size=17), showline=True, linecolor="black", linewidth=2, ticks="outside", tickwidth=2, tickcolor="black", range=[0, 100]),

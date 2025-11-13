@@ -228,10 +228,10 @@ INDICATOR_HIGHER_IS_BETTER_VIZ = {
     "Key Structures without Internet Access (unit: %)": False,
     "Average Cellular Download Speed (unit: megabites per second)": True,
     "Nighttime Luminosity (unit: nWatts/(cm2 x sr)": True,
-    "Railway Flood Risk (unit: km)": False,
-    "Road Flood Risk (unit: km)": False,
-    "Railway Heatwave Risk (unit: km)": False,
-    "Road Heatwave Risk (unit: km)": False,
+    "Railway Flood Risk (unit: %)": False,
+    "Road Flood Risk (unit: %)": False,
+    "Railway Heatwave Risk (unit: %)": False,
+    "Road Heatwave Risk (unit: %)": False,
 }
 
 COLUMN_ORDER = [
@@ -254,10 +254,10 @@ COLUMN_ORDER = [
     "Total Methane Emissions (unit: tonnes)",
     "Total CO2-Equivalent Emissions (unit: tonnes)",
     "Total CO2-Equivalent Emissions from Coal Power Plants (unit: tonnes)",
-    "Railway Flood Risk (unit: km)",
-    "Road Flood Risk (unit: km)",
-    "Railway Heatwave Risk (unit: km)",
-    "Road Heatwave Risk (unit: km)",
+    "Railway Flood Risk (unit: %)",
+    "Road Flood Risk (unit: %)",
+    "Railway Heatwave Risk (unit: %)",
+    "Road Heatwave Risk (unit: %)",
     "geometry"]
 
 DELTA_THRESHOLDS = {"good": 0.10, "warn": 0.03}
