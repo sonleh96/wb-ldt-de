@@ -282,6 +282,31 @@ CHART_COLORS = {
     "national": "#1e88e5",
 }
 
+SUB_COLS_DICT = {"Prosperity Score": [
+                'Luminosity Score', 'Luminosity per Capita Score',
+                'Luminosity per Area Score', 'Area Lit Score', 'Population Lit Score'
+                ],
+            "Infrastructure Score": [
+                'Key Structure Internet Score',
+                'Mobile Internet Score',
+                'Key Structure Internet Access Score',
+                'Accessibility to Hospitals Score',
+                'Accessibility to Schools Score',
+                'Railway Density Score',
+                'Road Density Score'
+                ],
+            "Livability Score": [
+                'CO2e-Emissions Score', 
+                'CO2e-Emissions from Coal Power Plants Score',
+                'Methane-Emissions Score',
+                'Air Quality Score',
+                'Railway Flood Score',
+                'Road Flood Score',
+                'Railway Heatwave Score',
+                'Road Heatwave Score'
+            ]
+            }
+
 # Optional manual source badges per indicator (extend as needed)
 INDICATOR_SOURCES = {
     "PM 2.5 concentration (unit: µg/m3)": [

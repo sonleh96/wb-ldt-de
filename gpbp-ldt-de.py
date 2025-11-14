@@ -29,7 +29,8 @@ from src.ui import (
     remove_unit_suffix, render_choropleth_text, render_3d_scatterplot_options,
     create_3d_scatter, highlight_municipality_3d, create_2d_scatter_with_quadrants,
     highlight_municipality_2d, get_choropleth_labels, create_choropleth_map,
-    highlight_municipality_choropleth, create_spatial_autocorr_map, render_spatial_metrics, normalize
+    highlight_municipality_choropleth, create_spatial_autocorr_map, render_spatial_metrics, normalize,
+    render_waterfall_chart_options, create_waterfall_chart
 )
 from src.analysis import (
     get_indicator_analysis, prepare_regional_analysis_data, 
@@ -106,14 +107,18 @@ def load_data(_storage_client):
         _storage_client, BUCKET_NAME, "decision_engine/inputs/SRB_Full_geom_v6.json"
     )
     
+    df_score = read_csv_from_gcs(
+        _storage_client, BUCKET_NAME, "decision_engine/inputs/SRB_Full_Score_v6.csv"
+    )
+    
     regions_en = df_indicators["ENGLISH_NAME"].unique().tolist()
     regions_sr = df_indicators["SERBIAN_NAME_CYRILLIC"].unique().tolist()
     
     averages_df = df_indicators.groupby("year")[df_indicators.columns[4:]].mean().reset_index()
     
-    return df_indicatorlist, df_indicators, df_projects, regions_en, regions_sr, averages_df, gdf_score_geom
+    return df_indicatorlist, df_indicators, df_projects, regions_en, regions_sr, averages_df, gdf_score_geom, df_score
 
-df_indicatorlist, df_indicators, df_projects, regions_en, regions_sr, averages_df, gdf_score_geom = load_data(storage_client)
+df_indicatorlist, df_indicators, df_projects, regions_en, regions_sr, averages_df, gdf_score_geom, df_score = load_data(storage_client)
 
 # --- UI Rendering ---
 cache_manager = ResponseCacheManager(storage_client, BUCKET_NAME, CACHE_PATH, df_indicators)
@@ -174,6 +179,15 @@ with scatterplot:
     
     st.plotly_chart(fig_3d, use_container_width=True)
     
+    st.text("")
+    st.text("")
+    st.text("")
+    st.header("Score Driver Composition")
+    render_waterfall_chart_options(["Prosperity Score", "Infrastructure Score", "Livability Score"])
+    score_name = st.session_state.option_score_name_waterfall
+    fig_waterfall = create_waterfall_chart(df_score)
+    if fig_waterfall:
+        st.plotly_chart(fig_waterfall, use_container_width=True)
     
     # 2D Scatterplot
     # with st.expander("View 2D Scatterplot Options"):

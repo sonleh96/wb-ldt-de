@@ -6,11 +6,14 @@ import streamlit.components.v1 as components
 from PIL import Image
 import re
 import unicodedata
+import numpy as np
+import pandas as pd
 
-from src.config import UI_TEXT, CHART_COLORS, DELTA_THRESHOLDS, QUADRANT_COLORS, SPATIAL_AUTOCORR_COLORS, SPATIAL_AUTOCORR_LABELS
+from src.config import UI_TEXT, CHART_COLORS, DELTA_THRESHOLDS, QUADRANT_COLORS, SPATIAL_AUTOCORR_COLORS, SPATIAL_AUTOCORR_LABELS, SUB_COLS_DICT
 import plotly.graph_objects as go
 import plotly.express as px
 from src.caching import ResponseCacheManager
+
 
 def fix_appearance():
     # JS script to detect system theme
@@ -433,6 +436,76 @@ def highlight_municipality_3d(fig, sel, name):
                 "Prosperity Score: %{z:.2f}<extra></extra>"
             )
         )
+    )
+    
+    return fig
+
+def render_waterfall_chart_options(score_names):
+    score_name = st.selectbox(
+        "Choose a score to analyze:",
+        score_names,
+        index=score_names.index('Prosperity Score'),
+        key="option_score_name_waterfall")
+    
+    return None
+
+
+def create_waterfall_chart(slice_waterfall):
+    score_col = st.session_state.option_score_name_waterfall
+    sub_cols = SUB_COLS_DICT[score_col]
+    
+    # weights must sum to 1 (change to your real weights)
+    weights = {c: 1/len(sub_cols) for c in sub_cols}
+
+    # --- DATA (use your own df; here we reuse the filtered slice used for the map) ---
+    df = slice_waterfall.copy()  # or slice_choropleth merged with sub-scores
+    df = df[df["year"] == 2024]
+
+    municipality = st.session_state.get('highlight_municipality', "Veliko Gradište")
+    baseline_mode = "Country mean"
+    
+    # --- pick row + compute baseline ---
+    row = df.loc[df["ENGLISH_NAME"] == municipality, sub_cols + [score_col]].iloc[0]
+    if baseline_mode == "Country mean":
+        baseline_sub = df[sub_cols].mean()
+        baseline_total = np.sum([weights[c]*baseline_sub[c] for c in sub_cols])
+    else:
+        baseline_sub = pd.Series({c: 50 for c in sub_cols})
+        baseline_total = 50  # if your Prosperity Score is a weighted average on 0–100
+
+    # --- contributions (positive raises Prosperity, negative lowers) ---
+    diff = row[sub_cols] - baseline_sub
+    contrib = pd.Series({c: weights[c]*diff[c] for c in sub_cols}).sort_values()
+
+    # reconcile total (small numeric drift)
+    # estimated_total = baseline_total + contrib.sum()
+    actual_total = float(row[score_col])
+
+    # --- WATERFALL CHART ---
+    fig = go.Figure(go.Waterfall(
+        name=f"{score_col} Drivers",
+        orientation="v",
+        measure=["absolute"] + ["relative"] * len(contrib) + ["total"],
+        x=["Baseline"] + contrib.index.tolist() + ["Total"],
+        text=[f"{baseline_total:.2f}"] + [f"{v:+.2f}" for v in contrib.values] + [f"{actual_total:.2f}"],
+        y=[baseline_total] + contrib.values.tolist() + [actual_total - baseline_total],
+        decreasing={"marker": {"color": "#e45756"}},  # lowers score
+        increasing={"marker": {"color": "#54a24b"}},  # raises score
+        totals={"marker": {"color": "#4c78a8"}},
+    ))
+    fig.update_layout(
+        title=dict(text=f"{municipality}: Drivers of {score_col}", font=dict(size=27), x=0.5, xanchor='center', y=0.9),
+        yaxis_title="Score (0–100 scale)",
+        xaxis_title="Components",
+        yaxis_title_font=dict(size=16, color="black"),
+        xaxis_title_font=dict(size=16, color="black"),
+        yaxis=dict(
+            range=[0, 100]
+        ),
+        showlegend=False,
+        margin=dict(l=40, r=20, t=60, b=40),
+        height=500,
+        width=700
     )
     
     return fig
