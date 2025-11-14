@@ -242,6 +242,7 @@ INDICATOR_HIGHER_IS_BETTER_VIZ = {
 
 COLUMN_ORDER = [
     "year",
+    "NAME_1",
     "ENGLISH_NAME",
     "SERBIAN_NAME_CYRILLIC",
     "Prosperity Score",
@@ -354,4 +355,55 @@ INDICATOR_SOURCES = {
         {"label": "VIIRS Nighttime Day/Night Band Composites Version 1", "url": "https://developers.google.com/earth-engine/datasets/catalog/NOAA_VIIRS_DNB_MONTHLY_V1_VCMCFG"},
     ],
 }
+
+# --- Scatterplot Configuration ---
+LIVABILITY_INDICATORS = [
+    "Accessibility to Healthcare Services (unit: %)",
+    "Accessibility to School Services (unit: %)",
+    "Diversity of Health Services",
+    "PM 2.5 concentration (unit: µg/m3)",
+    "PM 10 concentration (unit: µg/m3)",
+    "NO2 concentration (unit: µg/m3)",
+    "Total Methane Emissions (unit: tonnes)",
+    "Total CO2-Equivalent Emissions (unit: tonnes)",
+    "Total CO2-Equivalent Emissions from Coal Power Plants (unit: tonnes)",
+    "Livability Score"
+]
+
+PROSPERITY_INDICATORS = [
+    "Nighttime Luminosity (unit: nWatts/(cm2 x sr)",
+    "Key Structure Average Broadband Download Speed (unit: megabites per second)",
+    "Average Cellular Download Speed (unit: megabites per second)",
+    "Key Structures without Internet Access (unit: %)",
+    "Railway Flood Risk (unit: %)",
+    "Road Flood Risk (unit: %)",
+    "Railway Heatwave Risk (unit: %)",
+    "Road Heatwave Risk (unit: %)",
+    "Prosperity Score"
+]
+
+# Quadrant colors for 2D scatter
+QUADRANT_COLORS = {
+    "high_high": "green",
+    "high_low": "yellow",
+    "low_high": "yellow",
+    "low_low": "red"
+}
+
+# Spatial autocorrelation colors
+SPATIAL_AUTOCORR_COLORS = {
+    "Not Significant": "lightgrey",
+    "High-High (Hotspot)": "red",
+    "Low-Low (Coldspot)": "lightblue",
+    "High-Low": "green",
+    "Low-High": "yellow",
+}
+
+SPATIAL_AUTOCORR_LABELS = [
+    "Not Significant",
+    "High-High (Hotspot)",
+    "Low-Low (Coldspot)",
+    "High-Low",
+    "Low-High",
+]
 

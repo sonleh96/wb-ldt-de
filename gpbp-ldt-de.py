@@ -1,9 +1,7 @@
 import json
-import time
 import re
 from datetime import datetime
 import html as _html
-import difflib
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -13,28 +11,33 @@ from google.oauth2 import service_account
 from google.cloud import storage
 import numpy as np
 import pandas as pd
-import esda
-import libpysal as lps
 
 import plotly.express as px
-import plotly.graph_objects as go
 
 # Local imports
 from src.config import (
     BUCKET_NAME, CACHE_PATH, UI_TEXT, CATEGORY_OPTIONS_EN,
-    CATEGORY_OPTIONS_SR
+    CATEGORY_OPTIONS_SR, INDICATOR_SOURCES, COLUMN_ORDER,
+    LIVABILITY_INDICATORS, PROSPERITY_INDICATORS
 )
 from src.gcs import read_csv_from_gcs, get_image_from_gcs, read_geojson_from_gcs
 from src.caching import ResponseCacheManager
-from src.ui import (render_language_selection, render_main_interface, chart_latest_comparison_bar, 
-                    chart_trend_sparkline, render_delta_chip, spacer, render_transparency_badges, 
-                    render_sources_badges, render_map_options, render_scatterplot_options, 
-                    remove_unit_suffix, normalize, render_choropleth_text, render_3d_scatterplot_options)
+from src.ui import (
+    render_language_selection, render_main_interface, chart_latest_comparison_bar, 
+    chart_trend_sparkline, render_delta_chip, spacer, render_transparency_badges, 
+    render_sources_badges, render_map_options, render_scatterplot_options, 
+    remove_unit_suffix, render_choropleth_text, render_3d_scatterplot_options,
+    create_3d_scatter, highlight_municipality_3d, create_2d_scatter_with_quadrants,
+    highlight_municipality_2d, get_choropleth_labels, create_choropleth_map,
+    highlight_municipality_choropleth, create_spatial_autocorr_map, render_spatial_metrics, normalize
+)
 from src.analysis import (
     get_indicator_analysis, prepare_regional_analysis_data, 
-    filter_projects, get_indicator_series, calculate_indicator_score
+    filter_projects, get_indicator_series,
+    calculate_spatial_autocorrelation, classify_spatial_clusters,
+    prepare_3d_scatter_data, prepare_scatter_data, prepare_choropleth_data,
+    find_municipality_match
 )
-from src.config import INDICATOR_SOURCES, COLUMN_ORDER
 from src.llm import (
     translate_en_to_sr, get_regional_narrative, get_background_research,
     get_initial_recommendations, get_final_projects, get_project_review_document
@@ -130,39 +133,14 @@ with scatterplot:
     st.header("📊 Scatterplot")
     st.write("This is a scatterplot of Serbia.")
     
+    # Prepare data
     df_scatter = pd.DataFrame(gdf_score_geom.drop(['population_total'], axis=1))
-    
-    indicators_x = ["Accessibility to Healthcare Services (unit: %)",
-                    "Accessibility to School Services (unit: %)",
-                    "Diversity of Health Services",
-                    "PM 2.5 concentration (unit: µg/m3)",
-                    "PM 10 concentration (unit: µg/m3)",
-                    "NO2 concentration (unit: µg/m3)",
-                    "Total Methane Emissions (unit: tonnes)",
-                    "Total CO2-Equivalent Emissions (unit: tonnes)",
-                    "Total CO2-Equivalent Emissions from Coal Power Plants (unit: tonnes)",
-                    "Livability Score"]
-    
-    indicators_y = ["Nighttime Luminosity (unit: nWatts/(cm2 x sr)",
-                    "Key Structure Average Broadband Download Speed (unit: megabites per second)",
-                    "Average Cellular Download Speed (unit: megabites per second)",
-                    "Key Structures without Internet Access (unit: %)",
-                    "Railway Flood Risk (unit: %)",
-                    "Road Flood Risk (unit: %)",
-                    "Railway Heatwave Risk (unit: %)",
-                    "Road Heatwave Risk (unit: %)",
-                    "Prosperity Score"]
-    
-    
-    render_3d_scatterplot_options(df_scatter['year'].unique().tolist())
-    
-    year = st.session_state.option_year_3d_scatterplot
-    slice_3d = df_scatter[['ENGLISH_NAME', 'year','Livability Score', 'Infrastructure Score', 'Prosperity Score']]
-    slice_3d = slice_3d[slice_3d['year'] == year]
-    slice_3d = slice_3d.rename({'ENGLISH_NAME': 'Municipality'}, axis=1)
-    
-    # Build normalized lookup table
     name_lookup = {normalize(s): s for s in df_scatter["ENGLISH_NAME"].unique()}
+    
+    # 3D Scatterplot
+    render_3d_scatterplot_options(df_scatter['year'].unique().tolist())
+    year = st.session_state.option_year_3d_scatterplot
+    slice_3d = prepare_3d_scatter_data(df_scatter, year)
     
     # Text input box
     highlight_txt = st.text_input(
@@ -176,236 +154,56 @@ with scatterplot:
     if highlight_txt:
         st.session_state.highlight_municipality = highlight_txt
     
-    # 2) Build figure
-    fig_3d = px.scatter_3d(
-        slice_3d,
-        x='Livability Score', y='Infrastructure Score', z='Prosperity Score',
-        hover_data={'Municipality': True,          # show District in tooltip
-                    'Infrastructure Score': ':.2f',
-                    'Prosperity Score': ':.2f',
-                    'Livability Score': ':.2f'}, # hide helper column
-
-    )
+    # Create 3D scatter plot
+    fig_3d = create_3d_scatter(slice_3d)
     
-    fig_3d.update_layout(
-        title=dict(text="Serbia Municipalities: Composite Score 3D Scatter Plot",
-                font=dict(size=27), x=0.5, xanchor='center', y=0.9),
-        scene=dict(
-            xaxis=dict(tickfont=dict(size=17), showline=True, linecolor="black", linewidth=2, ticks="outside", tickwidth=2, tickcolor="black", range=[0, 100]),
-            yaxis=dict(tickfont=dict(size=17), showline=True, linecolor="black", linewidth=2, ticks="outside", tickwidth=2, tickcolor="black", range=[0, 100]),
-            zaxis=dict(tickfont=dict(size=17), showline=True, linecolor="black", linewidth=2, ticks="outside", tickwidth=2, tickcolor="black", range=[0, 100]),
-            aspectratio=dict(x=1, y=1, z=1),  # Equal physical length for all axes
-            aspectmode='manual'  # Use manual aspect ratio (not auto or data)
-        ),
-        xaxis_title_font=dict(size=23),
-        yaxis_title_font=dict(size=23),
-        # zaxis_title_font=dict(size=23),
-        showlegend=True,
-        legend=dict(
-            font=dict(size=20),
-            orientation='h',
-            yanchor='bottom',
-            y=-0.2,
-            xanchor='center',
-            x=0.5
-        ),
-        height=1000, width=1500
-    )
-    
+    # Highlight municipality if match found
     if highlight_txt.strip():
-        norm_input = normalize(highlight_txt)
+        matches = find_municipality_match(highlight_txt, name_lookup)
         
-        # 1️⃣ Find substring matches
-        matches = [v for k, v in name_lookup.items() if norm_input in k]
-        
-        # 2️⃣ If no substring matches, find close fuzzy matches
-        if not matches:
-            all_norms = list(name_lookup.keys())
-            close_keys = difflib.get_close_matches(norm_input, all_norms, n=3, cutoff=0.6)
-            matches = [name_lookup[k] for k in close_keys]
-            
         if len(matches) == 1:
             name = matches[0]
-            sel = slice_3d[slice_3d["Municipality"] == name]
-            fig_3d.add_trace(
-                go.Scatter3d(
-                    x=sel['Livability Score'],
-                    y=sel['Infrastructure Score'],
-                    z=sel['Prosperity Score'],
-                    mode='markers',
-                    marker=dict(
-                        size=10,
-                        color='crimson'
-                    ),
-                    name=f"Highlighted: {name}",
-                    showlegend=True,
-                    hovertemplate=(
-                        "Livability Score: %{x:.2f}<br>"
-                        "Infrastructure Score: %{y:.2f}<br>"
-                        "Prosperity Score: %{z:.2f}<extra></extra>"
-                    )
-                )
-            )
-            st.success(f"✅ Highlighted: **{name}**")
+            district_name = slice_3d[slice_3d["Municipality"] == name]["District"].reset_index(drop=True).iloc[0]
+            sel = slice_3d[slice_3d["District"] == district_name]
+            fig_3d = highlight_municipality_3d(fig_3d, sel, name)
+            st.success(f"✅ Highlighted Municipality: **{name}**, part of **{district_name}** District")
         elif len(matches) > 1:
             st.info(f"Found multiple matches: {', '.join(matches[:5])}...")
         else:
             st.warning("No match found. Try typing part of the name or removing accents.")
     
-    
     st.plotly_chart(fig_3d, use_container_width=True)
     
     
+    # 2D Scatterplot
     # with st.expander("View 2D Scatterplot Options"):
-    #     render_scatterplot_options(df_scatter['year'].unique().tolist(), indicators_x, indicators_y)
+    #     render_scatterplot_options(df_scatter['year'].unique().tolist(), LIVABILITY_INDICATORS, PROSPERITY_INDICATORS)
     
     #     year = st.session_state.option_year_scatterplot
     #     indicator_x = st.session_state.option_indicator_x
     #     indicator_y = st.session_state.option_indicator_y
         
-    #     slice_scatter = df_scatter[['ENGLISH_NAME', 'year', indicator_x, indicator_y]]
-    #     slice_scatter = slice_scatter[slice_scatter['year'] == year]
-        
     #     x_score_name = remove_unit_suffix(indicator_x)
     #     y_score_name = remove_unit_suffix(indicator_y)
-
-    #     slice_scatter[x_score_name] = calculate_indicator_score(indicator_x, df_scatter)
-    #     slice_scatter[y_score_name] = calculate_indicator_score(indicator_y, df_scatter)
         
-    #     custom_data = slice_scatter[['ENGLISH_NAME', 
-    #                          x_score_name, y_score_name,
-    #                          indicator_x, indicator_y]]
+    #     # Prepare data
+    #     slice_scatter = prepare_scatter_data(df_scatter, indicator_x, indicator_y, year, x_score_name, y_score_name)
         
-    #     x_vals = slice_scatter[x_score_name].astype(float)
-    #     y_vals = slice_scatter[y_score_name].astype(float)
-    #     x_min, x_max = 0, 100
-    #     y_min, y_max = 0, 100
-    #     x_mid = (x_min + x_max) / 2
-    #     y_mid = (y_min + y_max) / 2
+    #     custom_data = slice_scatter[['ENGLISH_NAME', x_score_name, y_score_name, indicator_x, indicator_y]]
         
-    #     fig = px.scatter(
-    #         slice_scatter,
-    #         x=x_score_name,
-    #         y=y_score_name,
-    #         hover_data=None,
-    #         custom_data=custom_data,
-    #         labels={
-    #             "ENGLISH_NAME": "Municipality",
-    #             x_score_name: f'{x_score_name} Score',
-    #             y_score_name: f'{y_score_name} Score',
-    #             indicator_x: f"{indicator_x}",
-    #             indicator_y: f"{indicator_y}",
-    #         },
-    #         title=f'{indicator_x} vs {indicator_y} in Serbia, {year}',
-    #         width=1000, height=1000
-    #     )
+    #     # Create 2D scatter with quadrants
+    #     fig = create_2d_scatter_with_quadrants(slice_scatter, x_score_name, y_score_name, 
+    #                                             indicator_x, indicator_y, year, custom_data)
         
-    #     # Set explicit axis ranges so shapes align perfectly
-    #     fig.update_xaxes(range=[x_min, x_max])
-    #     fig.update_yaxes(range=[y_min, y_max])
-
-    #     # Add quadrant shading (low opacity so points stay visible)
-    #     fig.add_shape(type="rect", xref="x", yref="y",
-    #                 x0=x_mid, x1=x_max, y0=y_mid, y1=y_max,
-    #                 fillcolor="green", opacity=0.10, line_width=0, layer="below")     # Top Right
-
-    #     fig.add_shape(type="rect", xref="x", yref="y",
-    #                 x0=x_min, x1=x_mid, y0=y_mid, y1=y_max,
-    #                 fillcolor="yellow", opacity=0.10, line_width=0, layer="below")    # Top Left
-
-    #     fig.add_shape(type="rect", xref="x", yref="y",
-    #                 x0=x_mid, x1=x_max, y0=y_min, y1=y_mid,
-    #                 fillcolor="yellow", opacity=0.10, line_width=0, layer="below")    # Bottom Right
-
-    #     fig.add_shape(type="rect", xref="x", yref="y",
-    #                 x0=x_min, x1=x_mid, y0=y_min, y1=y_mid,
-    #                 fillcolor="red", opacity=0.10, line_width=0, layer="below")       # Bottom Left
-        
-    #     # Add quadrant labels at each quadrant center
-    #     fig.add_annotation(x=(x_mid + x_max)/2, y=(y_mid + y_max)/2,
-    #                     text="High Prosperity and Livability", showarrow=False, font=dict(size=20, color="green"))
-    #     fig.add_annotation(x=(x_min + x_mid)/2, y=(y_mid + y_max)/2,
-    #                     text="High Prosperity, Low Livability", showarrow=False, font=dict(size=20, color="#a67c00"))
-    #     fig.add_annotation(x=(x_mid + x_max)/2, y=(y_min + y_mid)/2,
-    #                     text="Low Prosperity, High Livability", showarrow=False, font=dict(size=20, color="#a67c00"))
-    #     fig.add_annotation(x=(x_min + x_mid)/2, y=(y_min + y_mid)/2,
-    #                     text="Low Prosperity and Livability", showarrow=False, font=dict(size=20, color="red"))
-
-    #     # Add crosshair lines at the midpoints
-    #     fig.add_vline(x=x_mid, line_width=2, line_dash="dash", line_color="black")
-    #     fig.add_hline(y=y_mid, line_width=2, line_dash="dash", line_color="black")
-
-    #     fig.update_traces(
-    #         hovertemplate=(
-    #             "<b>%{customdata[0]}</b><br>"
-    #             f"{x_score_name} Score: %{{customdata[1]:.0f}}<br>"
-    #             f"{y_score_name} Score: %{{customdata[2]:.0f}}<br>"
-    #             f"{indicator_x}: %{{customdata[3]:.2f}}<br>"
-    #             f"{indicator_y}: %{{customdata[4]:.2f}}"
-    #             "<extra></extra>"
-    #         ),
-    #         marker=dict(color='black')
-    #     )
-        
-    #     fig.update_layout(
-    #         title=dict(text=f"{y_score_name} vs {x_score_name} in Serbia, {year}",
-    #                 font=dict(size=27), x=0.5, xanchor='center'),
-    #         xaxis_title=f'{x_score_name} Score',
-    #         yaxis_title=f'{y_score_name} Score',
-    #         xaxis=dict(tickfont=dict(size=19), showline=True, linecolor="black", linewidth=2, ticks="outside", tickwidth=2, tickcolor="black"),
-    #         yaxis=dict(tickfont=dict(size=19), showline=True, linecolor="black", linewidth=2, ticks="outside", tickwidth=2, tickcolor="black"),
-    #         xaxis_title_font=dict(size=23),
-    #         yaxis_title_font=dict(size=23),
-    #         plot_bgcolor="white",
-    #         height=1000,
-    #         width=1000
-    #     )
-
-    #     # Hide the colorbar
-    #     fig.update_coloraxes(showscale=False)
-        
+    #     # Highlight municipality if match found
     #     if highlight_txt.strip():
-    #         norm_input = normalize(highlight_txt)
-            
-    #         # 1️⃣ Find substring matches
-    #         matches = [v for k, v in name_lookup.items() if norm_input in k]
-            
-    #         # 2️⃣ If no substring matches, find close fuzzy matches
-    #         if not matches:
-    #             all_norms = list(name_lookup.keys())
-    #             close_keys = difflib.get_close_matches(norm_input, all_norms, n=3, cutoff=0.6)
-    #             matches = [name_lookup[k] for k in close_keys]
+    #         matches = find_municipality_match(highlight_txt, name_lookup)
 
-    #         # 3️⃣ If exactly one match, highlight it
     #         if len(matches) == 1:
     #             name = matches[0]
     #             sel = slice_scatter[slice_scatter["ENGLISH_NAME"] == name]
-    #             fig.add_trace(
-    #                 go.Scatter(
-    #                     x=sel[x_score_name],
-    #                     y=sel[y_score_name],
-    #                     mode="markers+text",
-    #                     text=sel["ENGLISH_NAME"],
-    #                     textposition="top center",
-    #                     name=f"Highlighted: {name}",
-    #                     marker=dict(
-    #                         symbol="diamond",
-    #                         size=20,
-    #                         line=dict(width=2, color="white"),
-    #                         color="crimson"
-    #                     ),
-    #                     customdata=sel[["ENGLISH_NAME", x_score_name, y_score_name, indicator_x, indicator_y]],
-    #                     hovertemplate=(
-    #                         "<b>%{customdata[0]}</b><br>"
-    #                         f"{x_score_name} Score: %{{customdata[1]:.0f}}<br>"
-    #                         f"{y_score_name} Score: %{{customdata[2]:.0f}}<br>"
-    #                         f"{indicator_x}: %{{customdata[3]:.2f}}<br>"
-    #                         f"{indicator_y}: %{{customdata[4]:.2f}}"
-    #                         "<extra></extra>"
-    #                     ),
-    #                     showlegend=True
-    #                 )
-    #             )
+    #             fig = highlight_municipality_2d(fig, sel, x_score_name, y_score_name, 
+    #                                             indicator_x, indicator_y, name)
     #             st.success(f"✅ Highlighted: **{name}**")
     #         elif len(matches) > 1:
     #             st.info(f"Found multiple matches: {', '.join(matches[:5])}...")
@@ -417,17 +215,16 @@ with scatterplot:
         
 with choropleth:
     st.header("🗺️ Spatial Mapping")
-    # st.write("This is a map of Serbia.")
     
+    # Prepare data
     df_choropleth = gdf_score_geom.drop(['population_total'], axis=1)
     df_choropleth = df_choropleth[COLUMN_ORDER]
+    name_lookup = {normalize(s): s for s in df_choropleth["ENGLISH_NAME"].unique()}
     
-    render_map_options(df_choropleth['year'].unique().tolist(), df_choropleth.columns[3:-1].to_list())
+    render_map_options(df_choropleth['year'].unique().tolist(), df_choropleth.columns[4:-1].to_list())
     
     # Text input box
-    # Use value from session state if it exists, otherwise use default
-    default_value = st.session_state.get('highlight_municipality', 
-                                          name if isinstance(name, str) else "Veliko Gradište")
+    default_value = st.session_state.get('highlight_municipality', "Veliko Gradište")
     
     highlight_txt_choropleth = st.text_input(
         "🔎 Highlight a municipality (you can type partial or accent-free name, e.g., sabac or Nis):",
@@ -443,116 +240,29 @@ with choropleth:
     year = st.session_state.option_year
     indicator = st.session_state.option_indicator
     
-    slice_choropleth = df_choropleth[['ENGLISH_NAME', 'year', indicator, 'geometry']]
-    slice_choropleth = slice_choropleth[slice_choropleth['year'] == year]
-    slice_choropleth[f'{indicator}_score'] = calculate_indicator_score(indicator, slice_choropleth)
-    geojson_data = slice_choropleth.__geo_interface__
+    # Prepare choropleth data and calculate spatial autocorrelation
+    slice_choropleth, geojson_data = prepare_choropleth_data(df_choropleth, indicator, year)
+    # global_mi, local_mi, global_significance, region_local_significance = calculate_spatial_autocorrelation(slice_choropleth, indicator)
     
-    wq = lps.weights.Queen.from_dataframe(slice_choropleth, use_index=False, silence_warnings=True)
-    wq.transform = "r"
-    y = slice_choropleth[indicator]
-    np.random.seed(12345)
-    global_mi = esda.moran.Moran(y, wq)
-    global_significance = 'Significant' if global_mi.p_sim < 0.05 else 'Not Significant'
+    # Create choropleth map
+    labels = get_choropleth_labels(indicator)
+    fig = create_choropleth_map(slice_choropleth, geojson_data, indicator, labels, year)
     
-    local_mi = esda.moran.Moran_Local(y, wq)
-    region_local_significance = f'{((local_mi.p_sim < 0.05).sum() / len(slice_choropleth)) * 100:.1f}'
-    
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Municipalities", len(slice_choropleth))
-    col2.metric("Global Spatial Autocorrelation", global_significance)
-    col3.metric("Municipalities with Significant Local Spatial Autocorrelation", f'{region_local_significance}%')
-    
-    if "Score" not in indicator:
-        labels = {
-            "ENGLISH_NAME": "Municipality",
-            indicator: f"{indicator}", 
-            f'{indicator}_score': f'{remove_unit_suffix(indicator)} Score'
-        }
-    else:
-        labels = {
-            "ENGLISH_NAME": "Municipality",
-            indicator: f"{indicator}"
-        }
-    
-    # Plot
-    fig = px.choropleth_mapbox(
-        slice_choropleth,
-        geojson=geojson_data,
-        locations='ENGLISH_NAME',
-        featureidkey='properties.ENGLISH_NAME',
-        color=f'{indicator}_score' if "Score" not in indicator else indicator,
-        color_continuous_scale="RdYlGn",
-        range_color=(0, 100),
-        hover_data=['ENGLISH_NAME', indicator],
-        labels=labels,
-        title=f'{remove_unit_suffix(indicator)} in Serbia, {year}',
-        mapbox_style="carto-positron",  # 👈 OSM basemap (free)
-        center={"lat": 44.0, "lon": 21.0},  # 👈 Center on Serbia
-        zoom=6.5,  # 👈 Adjust zoom level for Serbia
-        opacity=0.7,  # 👈 Make choropleth semi-transparent to see basemap
-        width=1000,
-        height=1000
-    )
-    
-    fig.update_layout(margin={"r":0,"t":40,"l":0,"b":0},
-                      coloraxis_colorbar_title_text=f'{remove_unit_suffix(indicator)} Score' if "Score" not in indicator else remove_unit_suffix(indicator),
-                      coloraxis_colorbar_title_font=dict(
-                        size=15,
-                        color="black"),
-                      title=dict(text=f'{remove_unit_suffix(indicator)} in Serbia, {year}',
-                                 font=dict(size=30, color="black")),
-                      )
-    
-    # Check for highlight and add outline trace before displaying
+    # Highlight municipality if match found
     if highlight_txt_choropleth.strip():
-        norm_input = normalize(highlight_txt_choropleth)
-        matches = [v for k, v in name_lookup.items() if norm_input in k]
-        if not matches:
-            all_norms = list(name_lookup.keys())
-            close_keys = difflib.get_close_matches(norm_input, all_norms, n=3, cutoff=0.6)
-            matches = [name_lookup[k] for k in close_keys]
+        matches = find_municipality_match(highlight_txt_choropleth, name_lookup)
 
         if len(matches) == 1:
             name = matches[0]
-            sel = slice_choropleth[slice_choropleth["ENGLISH_NAME"] == name]
-
-            # ---- add boundary outline using Scattermapbox ----
-            # Extract boundary coordinates from the geometry
-            geom = sel.geometry.iloc[0]
+            district_name = slice_choropleth[slice_choropleth["ENGLISH_NAME"] == name]["NAME_1"].reset_index(drop=True).iloc[0]
+            sel = slice_choropleth[slice_choropleth["NAME_1"] == district_name]
             
-            # Handle both Polygon and MultiPolygon
-            if geom.geom_type == 'Polygon':
-                coords = list(geom.exterior.coords)
-                lons, lats = zip(*coords)
-                fig.add_trace(
-                    go.Scattermapbox(
-                        lon=lons,
-                        lat=lats,
-                        mode='lines',
-                        line=dict(width=3, color='black'),
-                        name=name,
-                        showlegend=False,
-                        hoverinfo='skip'
-                    )
-                )
-            elif geom.geom_type == 'MultiPolygon':
-                for polygon in geom.geoms:
-                    coords = list(polygon.exterior.coords)
-                    lons, lats = zip(*coords)
-                    fig.add_trace(
-                        go.Scattermapbox(
-                            lon=lons,
-                            lat=lats,
-                            mode='lines',
-                            line=dict(width=3, color='black'),
-                            name=name,
-                            showlegend=False,
-                            hoverinfo='skip'
-                        )
-                    )
+            st.success(f"✅ Highlighted: **{name}**, part of **{district_name}** District")
+            # Display spatial metrics
+            render_spatial_metrics(slice_choropleth, sel, district_name)
             
-            st.success(f"✅ Highlighted: **{name}**")
+            fig = highlight_municipality_choropleth(fig, sel, name)
+            
         elif len(matches) > 1:
             st.info(f"Found multiple matches: {', '.join(matches[:5])}...")
         else:
@@ -561,92 +271,24 @@ with choropleth:
     # Display the figure once with all traces
     st.plotly_chart(fig, use_container_width=True)
     
-    # st.text("")
-    # st.text("")
-    # st.text("")
-    # st.text("")
+    st.text("")
+    st.text("")
+    st.text("")
+    st.text("")
     
+    # # Spatial autocorrelation analysis
     # with st.expander("See Spatial Autocorrelation Analysis"):
-    
     #     render_choropleth_text()
         
-    #     np.random.seed(12345)
-    #     sig = 1 * (local_mi.p_sim < 0.05)
-    #     hh = 1 * (sig * local_mi.q == 1)
-    #     ll = 2 * (sig * local_mi.q == 2)
-    #     hl = 3 * (sig * local_mi.q == 3)
-    #     lh = 4 * (sig * local_mi.q == 4)
-    #     spots = hh + ll + hl + lh
-        
-    #     spot_labels = [
-    #         "Not Significant",
-    #         "High-High (Hotspot)",
-    #         "Low-Low (Coldspot)",
-    #         "High-Low",
-    #         "Low-High",
-    #     ]
-    #     labels = [spot_labels[i] for i in spots]
-
-    #     # attach label to the GeoDataFrame slice
+    #     # Classify clusters
+    #     labels = classify_spatial_clusters(local_mi)
     #     slice_choropleth["cl"] = labels
-
-    #     # consistent legend order + colors
-    #     category_order = {"cl": spot_labels}
-    #     color_map = {
-    #         "Not Significant": "lightgrey",
-    #         "High-High (Hotspot)": "red",
-    #         "Low-Low (Coldspot)": "lightblue",
-    #         "High-Low (Outlier)": "green",
-    #         "Low-High (Outlier)": "yellow",
-    #     }
-
-    #     # geojson from the slice itself (ensures one-to-one match)
-    #     geojson_data = json.loads(slice_choropleth.to_json())
-
-    #     fig_li = px.choropleth_map(
-    #         slice_choropleth,
-    #         geojson=geojson_data,
-    #         locations="ENGLISH_NAME",
-    #         featureidkey="properties.ENGLISH_NAME",
-    #         color="cl",
-    #         category_orders=category_order,
-    #         color_discrete_map=color_map,
-    #         hover_data=["ENGLISH_NAME", "cl"],
-    #         labels={"ENGLISH_NAME": "Municipality", "cl": "Cluster Type"},
-    #         map_style="carto-positron",
-    #         center={"lat": 44.0, "lon": 21.0},
-    #         zoom=6.5,
-    #         opacity=0.7,
-    #     )
-
-    #     # styling: thin white borders, fit to data, ensure legend shows
-    #     fig_li.update_traces(marker_line_width=0.5, marker_line_color="white")
-    #     fig_li.update_geos(fitbounds="locations", visible=False)
-    #     fig_li.update_layout(
-    #         margin=dict(l=0, r=0, t=40, b=0),
-    #         legend_title_text="Cluster Type",
-    #         showlegend=True,
-    #         legend=dict(
-    #             orientation="v",          # vertical legend
-    #             yanchor="middle",
-    #             y=0.8,                    # center vertically
-    #             xanchor="left",
-    #             x=0.6,                   # 1.02 = just outside the map
-    #             bgcolor="rgba(255,255,255,0.7)",  # semi-transparent white box
-    #             # bordercolor="black",
-    #             borderwidth=0.5,
-    #             font=dict(size=14)
-    #         ),
-    #         title=dict(
-    #             text=f"Local Spatial Autocorrelation of {remove_unit_suffix(indicator)} in Serbia, {year}",
-    #             font=dict(size=24),
-    #             x=0, xanchor="left"
-    #         ),
-    #         plot_bgcolor="white",
-    #         height=1000,
-    #         width=1000,
-    #     )
-
+        
+    #     # Create GeoJSON for spatial map
+    #     geojson_data_spatial = json.loads(slice_choropleth.to_json())
+        
+    #     # Create spatial autocorrelation map
+    #     fig_li = create_spatial_autocorr_map(slice_choropleth, geojson_data_spatial, indicator, year)
     #     st.plotly_chart(fig_li, use_container_width=True)
 
 

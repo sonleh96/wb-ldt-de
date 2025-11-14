@@ -2,8 +2,12 @@ from typing import List, Tuple, Dict
 import pandas as pd
 import streamlit as st
 import numpy as np
+import difflib
+import esda
+import libpysal as lps
 
-from src.config import CATEGORY_INDICATOR_DICT, INDICATOR_HIGHER_IS_BETTER, INDICATOR_HIGHER_IS_BETTER_VIZ
+from src.config import CATEGORY_INDICATOR_DICT, INDICATOR_HIGHER_IS_BETTER, INDICATOR_HIGHER_IS_BETTER_VIZ, SPATIAL_AUTOCORR_LABELS
+from src.ui import normalize
 
 @st.cache_data
 def extract_regional_data(df: pd.DataFrame, region: str, relevant_columns: List[str]) -> pd.DataFrame:
@@ -169,5 +173,138 @@ def calculate_indicator_score(indicator: str, df_indicators: pd.DataFrame) -> fl
         return np.round(df_indicators[indicator].rank(pct=True) * 100, 2)
     else:
         return np.round(100 - df_indicators[indicator].rank(pct=True) * 100, 2)
+
+
+def calculate_spatial_autocorrelation(slice_choropleth: pd.DataFrame, indicator: str) -> Tuple:
+    """
+    Calculate global and local Moran's I for spatial autocorrelation.
     
+    Args:
+        slice_choropleth: GeoDataFrame with spatial data
+        indicator: Name of the indicator column
+        
+    Returns:
+        Tuple of (global_mi, local_mi, global_significance, region_local_significance)
+    """
+    wq = lps.weights.Queen.from_dataframe(slice_choropleth, use_index=False, silence_warnings=True)
+    wq.transform = "r"
+    y = slice_choropleth[indicator]
+    
+    np.random.seed(12345)
+    global_mi = esda.moran.Moran(y, wq)
+    global_significance = 'Significant' if global_mi.p_sim < 0.05 else 'Not Significant'
+    
+    local_mi = esda.moran.Moran_Local(y, wq)
+    region_local_significance = f'{((local_mi.p_sim < 0.05).sum() / len(slice_choropleth)) * 100:.1f}'
+    
+    return global_mi, local_mi, global_significance, region_local_significance
+
+
+def classify_spatial_clusters(local_mi) -> List[str]:
+    """
+    Classify municipalities into spatial clusters (HH, LL, HL, LH, Not Significant).
+    
+    Args:
+        local_mi: Local Moran's I result object
+        
+    Returns:
+        List of cluster labels for each municipality
+    """
+    np.random.seed(12345)
+    sig = 1 * (local_mi.p_sim < 0.05)
+    hh = 1 * (sig * local_mi.q == 1)
+    ll = 2 * (sig * local_mi.q == 2)
+    hl = 3 * (sig * local_mi.q == 3)
+    lh = 4 * (sig * local_mi.q == 4)
+    spots = hh + ll + hl + lh
+    
+    labels = [SPATIAL_AUTOCORR_LABELS[i] for i in spots]
+    return labels
+
+
+def prepare_3d_scatter_data(df_scatter: pd.DataFrame, year: int) -> pd.DataFrame:
+    """
+    Prepare data for 3D scatterplot.
+    
+    Args:
+        df_scatter: DataFrame with indicator data
+        year: Year to filter
+        
+    Returns:
+        Filtered and renamed DataFrame for 3D plotting
+    """
+    slice_3d = df_scatter[["NAME_1", 'ENGLISH_NAME', 'year', 'Livability Score', 'Infrastructure Score', 'Prosperity Score']]
+    slice_3d = slice_3d[slice_3d['year'] == year]
+    slice_3d = slice_3d.rename({'NAME_1': 'District', 'ENGLISH_NAME': 'Municipality'}, axis=1)
+    return slice_3d
+
+
+def prepare_scatter_data(df_scatter: pd.DataFrame, indicator_x: str, indicator_y: str, 
+                         year: int, x_score_name: str, y_score_name: str) -> pd.DataFrame:
+    """
+    Prepare data for 2D scatterplot with score calculations.
+    
+    Args:
+        df_scatter: DataFrame with indicator data
+        indicator_x: X-axis indicator name
+        indicator_y: Y-axis indicator name
+        year: Year to filter
+        x_score_name: Name for X score column
+        y_score_name: Name for Y score column
+        
+    Returns:
+        DataFrame with calculated scores
+    """
+    slice_scatter = df_scatter[['ENGLISH_NAME', 'year', indicator_x, indicator_y]]
+    slice_scatter = slice_scatter[slice_scatter['year'] == year]
+    
+    slice_scatter[x_score_name] = calculate_indicator_score(indicator_x, df_scatter)
+    slice_scatter[y_score_name] = calculate_indicator_score(indicator_y, df_scatter)
+    
+    return slice_scatter
+
+
+def prepare_choropleth_data(df_choropleth: pd.DataFrame, indicator: str, year: int) -> Tuple[pd.DataFrame, dict]:
+    """
+    Prepare data for choropleth with score calculations.
+    
+    Args:
+        df_choropleth: GeoDataFrame with indicator data
+        indicator: Indicator name
+        year: Year to filter
+        
+    Returns:
+        Tuple of (slice_choropleth with scores, geojson_data)
+    """
+    slice_choropleth = df_choropleth[['NAME_1', 'ENGLISH_NAME', 'year', indicator, 'geometry']]
+    slice_choropleth = slice_choropleth[slice_choropleth['year'] == year]
+    slice_choropleth[f'{indicator}_score'] = calculate_indicator_score(indicator, slice_choropleth)
+    geojson_data = slice_choropleth.__geo_interface__
+    
+    return slice_choropleth, geojson_data
+
+
+def find_municipality_match(input_text: str, name_lookup: Dict[str, str]) -> List[str]:
+    """
+    Find municipality matches using fuzzy matching.
+    
+    Args:
+        input_text: User input text
+        name_lookup: Dictionary mapping normalized names to actual names
+        
+    Returns:
+        List of matched municipality names
+    """
+    norm_input = normalize(input_text)
+    
+    # 1️⃣ Find substring matches
+    matches = [v for k, v in name_lookup.items() if norm_input in k]
+    
+    # 2️⃣ If no substring matches, find close fuzzy matches
+    if not matches:
+        all_norms = list(name_lookup.keys())
+        close_keys = difflib.get_close_matches(norm_input, all_norms, n=3, cutoff=0.6)
+        matches = [name_lookup[k] for k in close_keys]
+    
+    return matches
     
