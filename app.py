@@ -36,6 +36,8 @@ st.sidebar.image(pimpam_logo, use_container_width=True)
 st.logo(gpbp_logo, size='large')
 
 pages = {
+    # "Home": [st.Page("home.py", title="Home")],
+    
     "GPBP Tools": [
         st.Page("gpbp-ldt-de.py", title="Local Development Tracker Decision Engine (LDT-DE)"),
         st.Page("gpbp-pia.py", title="Public Infrastructure Access Tool (PIA)"),
