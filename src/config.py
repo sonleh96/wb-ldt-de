@@ -23,19 +23,23 @@ CATEGORY_EN_TO_SR = dict(zip(CATEGORY_OPTIONS_EN, CATEGORY_OPTIONS_SR))
 CATEGORY_INDICATOR_DICT = {
     'Education': [
         "Accessibility to School Services (unit: %)",
-        "Key Structures without Internet Access (unit: %)",
-        "Key Structure Average Broadband Download Speed (unit: megabites per second)"
+        "Number of Schools per Capita (unit:)",
+        "Diversity of Schools Index (unit:)"
+
     ],
     "Energy Access": [
-        "Nighttime Luminosity (unit: nWatts/(cm2 x sr)"
+        "Nighttime Luminosity (unit: nWatts/(cm2 x sr)",
+        "Luminosity per Capita (unit: nWatts/(cm2 x sr x person))",
+        "Luminosity per Area (unit: nWatts/(cm2 x sr x km2))",
+        "Share of Area Lit by Nighttime Luminosity (unit: %)",
+        "Share of Population Exposed to Nighttime Luminosity (unit: %)"
     ],
     "Environment": [
-        "Emissions from all sources (unit: kgCO2e/kg)",
-        "Emissions from Coal Power Plants (unit: kgCO2e/kg)",
-        "Agriculture Emissions (unit: kgCO2e/kg)",
-        "Forestry & Land Use Emissions (unit: kgCO2e/kg)",
         "PM 2.5 concentration (unit: µg/m3)",
-        "NO2 concentration (unit: µg/m3)"
+        "Total Methane Emissions (unit: tonnes)",
+        "Total CO2-Equivalent Emissions (unit: tonnes)",
+        "Waste Disposal Points Per 10000 (unit:)",
+        "Share of Population without proper Access to Waste Disposal (unit: %)"
     ],
     'Digitalization': [
         "Key Structure Average Broadband Download Speed (unit: megabites per second)",
@@ -43,17 +47,17 @@ CATEGORY_INDICATOR_DICT = {
         "Average Cellular Download Speed (unit: megabites per second)"
     ],
     'Health': [
-        "Accessibility to Health Services (unit: %)",
-        "Diversity of Health Services",
-        "PM 2.5 concentration (unit: µg/m3)",
-        "NO2 concentration (unit: µg/m3)",
-        "Key Structures without Internet Access (unit: %)"
+        "Accessibility to Healthcare Services (unit: %)",
+        "Number of Hospitals per Capita (unit:)",
+        "Diversity of Health Services Index (unit:)"
     ],
     'Sustainable Transport': [
-        "Railway flood risk per capita (unit: km per capita)",
-        "Road flood risk per capita (unit: km per capita)",
-        "Railway heatwave risk per capita (unit: km per capita)",
-        "Road heatwave risk per capita (unit: km per capita)"
+        "Road Density (unit: km/km2)",
+        "Railway Density (unit: km/km2)",
+        "Railway Flood Risk (unit: %)",
+        "Road Flood Risk (unit: %)",
+        "Railway Heatwave Risk (unit: %)",
+        "Road Heatwave Risk (unit: %)"
     ]
 }
 
@@ -115,7 +119,7 @@ UI_TEXT = {
 
 # --- LLM PROMPTS ---
 
-SYSTEM_MESSAGE = """
+SYSTEM_MESSAGE = f"""
 # Role
 You're a data scientist with domain expertise in local governance.
 
@@ -127,28 +131,30 @@ You're a data scientist with domain expertise in local governance.
 # Context:
 This is what each indicator means:
 -   Accessibility to Health Services (unit: %): Measures the percentage of citizens with healthcare access within a 60-minute walking distance.
+-   Number of Hospitals per Capita (unit:): Number of hospitals in the region normalized to its total population
+-   Diversity of Health Services Index (unit:): Evaluates the diversity in healthcare services (hospitals, clinics, etc...) within a municipality using the Shannon Diversity Index.
 -   Accessibility to School Services (unit: %): Measures the percentage of citizens with school access within a 60-minute walking distance.
--   Diversity of Health Services: Evaluates healthcare service diversity within a municipality using the Shannon Diversity Index.
--   CO2 Equivalent Emissions from all sources (unit: kgCO2e/kg): Quantifies total emissions, in terms of CO2, at the municipal level from all sources.
--   Methane Emissions from all sources (kg): Quantifies total methane emissions at the municipal level from all sources.
--   Emissions from Coal Power Plants (unit: kgCO2e/kg): Quantifies emissions from coal power plants specifically, aggregating data by emission type.
+-   Number of Schools per Capita (unit:): Number of schools, colleges, and universities in the region normalized to its total population
+-   Diversity of Schools Index (unit:): Evaluates the diversity of educational institutions (schools, colleges, and universities) within a municipality using the Shannon Diversity Index.
 -   Nighttime Luminosity (unit: nWatts/(cm2 x sr): Measures artificial nighttime light as an measurement of both the degree of electrification and economic development indicator using NASA's Black Marble data.
+-   Luminosity per Capita (unit: nWatts/(cm2 x sr x person)): Nighttime Luminosity normalized to the region's Total Population.
+-   Luminosity per Area (unit: nWatts/(cm2 x sr x km2)): Nighttime Luminosity normalized to the region's Total Area.
+-   Share of Area Lit by Nighttime Luminosity (unit: %): Share of the region's total area lit by nighttime luminosity.
+-   Share of Population Exposed to Nighttime Luminosity (unit: %): Share of the region's total population under nighttime luminosity 
 -   Key Structure Average Broadband Download Speed (unit: megabites per second): Calculates the average broadband speed for key structures like schools and hospitals.
 -   Average Cellular Download Speed (unit: megabites per second): Measures average mobile download speeds across sub-national regions.
 -   Key Structures without Internet Access (unit: %): Shows the percentage of hospitals and schools lacking broadband internet access.
--   Road flood risk per capita (unit: km per capita): Assesses road exposure to 1-in-100-year flood risks per capita for climate adaptation planning. 
--   Road heatwave risk per capita (unit: km per capita): Measures road length at risk from heatwaves per capita in high-emission climate scenarios.
--   Railway flood risk per capita (unit: km per capita): Assesses railway exposure to 1-in-100-year flood risks per capita.
--   Railway heatwave risk per capita (unit: km per capita): Measures railway length at risk from heatwaves per capita in high-emission scenarios.
--   Road flood risk (unit: km): Assesses road exposure to 1-in-100-year flood risks for climate adaptation planning. 
--   Road heatwave risk (unit: km): Measures road length at risk from heatwaves in high-emission climate scenarios.
--   Railway flood risk (unit: km): Assesses railway exposure to 1-in-100-year flood risks.
--   Railway heatwave risk (unit: km): Measures railway length at risk from heatwaves in high-emission scenarios.
+-   Road Density (unit: km/km2): The ratio of the length of the region's total road network to the region's land area
+-   Railway Density (unit: km/km2): The ratio of the length of the region's total railway network to the region's land area
+-   Road Flood Risk (unit: %): Assesses the share of the region's total length of railway exposure to 1-in-100-year flood risks for climate adaptation planning
+-   Road Heatwave Risk (unit: %): Assesses the share of the region's total length of road exposure to 1-in-100-year flood risks for climate adaptation planning
+-   Railway Flood Risk (unit: %): Percentage of railway length at risk from 1-in-100-year flood risks for climate adaptation planning. 
+-   Railway Heatwave Risk (unit: %): Measures road length at risk from heatwaves in high-emission climate scenarios
 -   PM 2.5 concentration (unit: µg/m3): Calculates average annual PM 2.5 concentration in sub-national regions, a key health risk factor.
--   PM 10 concentration (unit: µg/m3): Calculates average annual PM 10 concentration in sub-national regions, a key health risk factor.
--   NO2 concentration (unit: µg/m3): Calculates average annual NO2 concentration in sub-national regions, a key health risk factor.
--   Agriculture Emissions (unit: kgCO2e/kg): Quantifies total emissions and emission factors at the municipal level from agriculture sources.
--   Forestry & Land Use Emissions (unit: kgCO2e/kg): Quantifies total emissions and emission factors at the municipal level from forestry and land-use sources.
+-   Total Methane Emissions (unit: tonnes): Total methane emissions from all sources in the region.
+-   Total CO2-Equivalent Emissions (unit: tonnes): Total CO2-equivalent emissions from all sources in the region.
+-   Waste Disposal Points Per 10000 (unit:): Number of waste disposal points per 10,000 people in the region.
+-   Share of Population without proper Access to Waste Disposal (unit: %): Share of the region's total population without proper access to waste disposal.
     
 Each indicator may fall under one or more of the following subcategories:
 -   Education: Concerns the degree of which the region's population has access to schools and how much access the region's schools has to internet infrastructure for a given year.
@@ -193,35 +199,34 @@ ADDITIONAL_CONTEXT = {
 
 # --- Visualization configuration ---
 # Heuristics: True means higher is better; False means lower is better
-INDICATOR_HIGHER_IS_BETTER = {
-    "Accessibility to Health Services (unit: %)": True,
-    "Accessibility to School Services (unit: %)": True,
-    "Diversity of Health Services": True,
-    "Nighttime Luminosity (unit: nWatts/(cm2 x sr)": True,
-    "Key Structure Average Broadband Download Speed (unit: megabites per second)": True,
-    "Average Cellular Download Speed (unit: megabites per second)": True,
-    "Key Structures without Internet Access (unit: %)": False,
-    "Road flood risk per capita (unit: km per capita)": False,
-    "Road heatwave risk per capita (unit: km per capita)": False,
-    "Railway flood risk per capita (unit: km per capita)": False,
-    "Railway heatwave risk per capita (unit: km per capita)": False,
-    "PM 2.5 concentration (unit: µg/m3)": False,
-    "PM 10 concentration (unit: µg/m3)": False,
-    "NO2 concentration (unit: µg/m3)": False,
-    "Emissions from all sources (unit: kgCO2e/kg)": False,
-    "Emissions from Coal Power Plants (unit: kgCO2e/kg)": False,
-    "Agriculture Emissions (unit: kgCO2e/kg)": False,
-    "Forestry & Land Use Emissions (unit: kgCO2e/kg)": False,
-}
+# INDICATOR_HIGHER_IS_BETTER = {
+#     "Accessibility to Health Services (unit: %)": True,
+#     "Accessibility to School Services (unit: %)": True,
+#     "Diversity of Health Services": True,
+#     "Nighttime Luminosity (unit: nWatts/(cm2 x sr)": True,
+#     "Key Structure Average Broadband Download Speed (unit: megabites per second)": True,
+#     "Average Cellular Download Speed (unit: megabites per second)": True,
+#     "Key Structures without Internet Access (unit: %)": False,
+#     "Road flood risk per capita (unit: km per capita)": False,
+#     "Road heatwave risk per capita (unit: km per capita)": False,
+#     "Railway flood risk per capita (unit: km per capita)": False,
+#     "Railway heatwave risk per capita (unit: km per capita)": False,
+#     "PM 2.5 concentration (unit: µg/m3)": False,
+#     "PM 10 concentration (unit: µg/m3)": False,
+#     "NO2 concentration (unit: µg/m3)": False,
+#     "Emissions from all sources (unit: kgCO2e/kg)": False,
+#     "Emissions from Coal Power Plants (unit: kgCO2e/kg)": False,
+#     "Agriculture Emissions (unit: kgCO2e/kg)": False,
+#     "Forestry & Land Use Emissions (unit: kgCO2e/kg)": False,
+# }
 
-INDICATOR_HIGHER_IS_BETTER_VIZ = {
+INDICATOR_HIGHER_IS_BETTER = {
     "Accessibility to Healthcare Services (unit: %)": True,
     'Number of Hospitals per Capita (unit:)': True,
     'Diversity of Health Services Index (unit:)': True,
     "Accessibility to School Services (unit: %)": True,
     'Number of Schools per Capita (unit:)': True,
     'Diversity of Schools Index (unit:)': True,
-    "Diversity of Health Services": True,
     "PM 2.5 concentration (unit: µg/m3)": False,
     "Total Methane Emissions (tonnes)": False,
     "Total CO2-Equivalent Emissions (tonnes)": False,

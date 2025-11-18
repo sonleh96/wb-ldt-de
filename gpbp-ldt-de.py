@@ -89,12 +89,13 @@ openai_client = init_openai_client()
 def load_data(_storage_client):
     """Load all necessary data from GCS."""
     df_indicatorlist = read_csv_from_gcs(
-        _storage_client, BUCKET_NAME, "decision_engine/inputs/Indicator List v2.csv",
+        _storage_client, BUCKET_NAME, "decision_engine/inputs/Indicator List v3.csv",
         delimiter=",", encoding="cp1252", on_bad_lines="warn"
     )
-    df_indicators = read_csv_from_gcs(
-        _storage_client, BUCKET_NAME, "decision_engine/inputs/SRB Absolute Full_v4.csv"
-    )
+    # print(df_indicatorlist)
+    # df_indicators = read_csv_from_gcs(
+    #     _storage_client, BUCKET_NAME, "decision_engine/inputs/SRB Absolute Full_v4.csv"
+    # )
     
     df_projects = read_csv_from_gcs(
         _storage_client, BUCKET_NAME, "decision_engine/inputs/wbif_project_examples_v2.csv", sep=";"
@@ -111,10 +112,19 @@ def load_data(_storage_client):
         _storage_client, BUCKET_NAME, "decision_engine/inputs/SRB_Full_Score_v7.csv"
     )
     
+    df_indicators = gdf_score_geom.drop(['NAME_1', 'GID_2', 'PM 10 concentration (unit: µg/m3)', 'NO2 concentration (unit: µg/m3)',
+                                         'Total CO2-Equivalent Emissions from Coal Power Plants (unit: tonnes)',
+                                         'Railway Flood Risk (unit: km)', 'Road Flood Risk (unit: km)', 'Railway Heatwave Risk (unit: km)', 
+                                         'Road Heatwave Risk (unit: km)', 'Prosperity Score', 'population_total',
+                                         'Infrastructure Score', 'Livability Score', 'geometry'], axis=1)
+    
     regions_en = df_indicators["ENGLISH_NAME"].unique().tolist()
     regions_sr = df_indicators["SERBIAN_NAME_CYRILLIC"].unique().tolist()
     
-    averages_df = df_indicators.groupby("year")[df_indicators.columns[4:]].mean().reset_index()
+    print(df_indicators.columns)
+    print(df_indicatorlist['indicator_name_full'].tolist())
+    
+    averages_df = df_indicators.groupby("year")[df_indicators.columns[3:]].mean().reset_index()
     
     return df_indicatorlist, df_indicators, df_projects, regions_en, regions_sr, averages_df, gdf_score_geom, df_score
 

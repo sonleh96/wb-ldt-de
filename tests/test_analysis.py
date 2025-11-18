@@ -13,8 +13,8 @@ def sample_df_indicators():
     data = {
         'ENGLISH_NAME': ['Region A', 'Region A', 'Region B'],
         'year': [2020, 2021, 2020],
-        'indicator_1': [10, 12, 20],
-        'indicator_2': [100, 110, 200]
+        'Indicator One Full': [10, 12, 20],
+        'Indicator Two Full': [100, 110, 200]
     }
     return pd.DataFrame(data)
 
@@ -22,24 +22,23 @@ def sample_df_indicators():
 def sample_df_indicatorlist():
     data = {
         'indicator_name_full': ['Indicator One Full', 'Indicator Two Full'],
-        'indicator_name': ['indicator_1', 'indicator_2'],
         'indicator_description': ['Desc 1', 'Desc 2']
     }
     return pd.DataFrame(data)
 
 def test_extract_regional_data(sample_df_indicators):
-    result = extract_regional_data(sample_df_indicators, 'Region A', ['indicator_1', 'year'])
+    result = extract_regional_data(sample_df_indicators, 'Region A', ['Indicator One Full', 'year'])
     assert len(result) == 2
-    assert 'indicator_1' in result.columns
+    assert 'Indicator One Full' in result.columns
     assert 'year' in result.columns
-    assert result['indicator_1'].tolist() == [10, 12]
+    assert result['Indicator One Full'].tolist() == [10, 12]
 
 def test_extract_national_data(sample_df_indicators):
     # This function expects averages, so we'll mimic that structure
-    avg_df = pd.DataFrame({'year': [2020, 2021], 'indicator_1': [15, 12]})
-    result = extract_national_data(avg_df, ['indicator_1', 'year'])
+    avg_df = pd.DataFrame({'year': [2020, 2021], 'Indicator One Full': [15, 12]})
+    result = extract_national_data(avg_df, ['Indicator One Full', 'year'])
     assert len(result) == 2
-    assert 'indicator_1' in result.columns
+    assert 'Indicator One Full' in result.columns
 
 def test_get_indicator_analysis(sample_df_indicatorlist, mocker):
     # Mock the config dictionary
@@ -49,18 +48,19 @@ def test_get_indicator_analysis(sample_df_indicatorlist, mocker):
     
     assert "Here is the outline of the indicators relevant to Test Category" in text
     assert "1. **Indicator One Full**: Desc 1" in text
-    assert code_list == ['indicator_1']
-    assert code_name_dict == {'indicator_1': 'Indicator One Full'}
+    assert code_list == ['Indicator One Full']
+    assert code_name_dict == {'Indicator One Full': 'Indicator One Full'}
 
 def test_prepare_regional_analysis_data(sample_df_indicators):
-    avg_df = pd.DataFrame({'year': [2020, 2021], 'indicator_1': [15.0, 12.0], 'ENGLISH_NAME':['x','y']})
+    # Now using full names as column identifiers
+    avg_df = pd.DataFrame({'year': [2020, 2021], 'Indicator One Full': [15.0, 12.0], 'ENGLISH_NAME':['x','y']})
     
     result = prepare_regional_analysis_data(
         sample_df_indicators, 
         avg_df, 
         'Region A', 
-        ['indicator_1'], 
-        {'indicator_1': 'Indicator One Full'}
+        ['Indicator One Full'], 
+        {'Indicator One Full': 'Indicator One Full'}
     )
     
     assert "**Indicator One Full**" in result
