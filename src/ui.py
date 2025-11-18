@@ -9,7 +9,7 @@ import unicodedata
 import numpy as np
 import pandas as pd
 
-from src.config import UI_TEXT, CHART_COLORS, DELTA_THRESHOLDS, QUADRANT_COLORS, SPATIAL_AUTOCORR_COLORS, SPATIAL_AUTOCORR_LABELS, SCORE_COLS_DICT
+from src.config import UI_TEXT, CHART_COLORS, DELTA_THRESHOLDS, QUADRANT_COLORS, SPATIAL_AUTOCORR_COLORS, SPATIAL_AUTOCORR_LABELS, SCORE_COLS_DICT, SUB_COLS_DICT
 import plotly.graph_objects as go
 import plotly.express as px
 from src.caching import ResponseCacheManager
@@ -440,19 +440,30 @@ def highlight_municipality_3d(fig, sel, name):
     
     return fig
 
-def render_waterfall_chart_options(score_names):
-    score_name = st.selectbox(
-        "Choose a score to analyze:",
-        score_names,
-        index=score_names.index('Prosperity Score'),
-        key="option_score_name_waterfall")
+def render_waterfall_chart_options(score_names, score_type="main"):
+    if score_type == "main":
+        score_name = st.selectbox(
+            "Choose a score to analyze:",
+            score_names,
+            index=score_names.index('Prosperity Score'),
+            key="option_score_name_waterfall")
+    if score_type == "sub":
+        sub_score_name = st.selectbox(
+            "Choose a subscore to analyze:",
+            score_names,
+            index=score_names.index('Energy Access Score'),
+            key="option_subscore_name_waterfall")
     
     return None
 
 
-def create_waterfall_chart(slice_waterfall):
-    score_col = st.session_state.option_score_name_waterfall
-    sub_cols = SCORE_COLS_DICT[score_col]
+def create_waterfall_chart(slice_waterfall, score_type="main"):
+    if score_type == "main":
+        score_col = st.session_state.option_score_name_waterfall
+        sub_cols = SCORE_COLS_DICT[score_col]
+    if score_type == "sub":
+        score_col = st.session_state.option_subscore_name_waterfall
+        sub_cols = SUB_COLS_DICT[score_col]
     
     # weights must sum to 1 (change to your real weights)
     weights = {c: 1/len(sub_cols) for c in sub_cols}

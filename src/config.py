@@ -325,22 +325,22 @@ SUB_COLS_DICT = {"Energy Access Score": [
             "Health Score": [
                 'Accessibility to Hospitals Score',
                 'Number of Hospitals per Capita Score',
-                'Diversity of Health Services Index Score'
+                'Diversity of Health Services Score'
                 ],
             "Sustainable Transport Score": [
                 'Railway Density Score',
                 'Road Density Score',
-                'Railway Flood Risk Score',
-                'Road Flood Risk Score',
-                'Railway Heatwave Risk Score',
-                'Road Heatwave Risk Score'
+                'Railway Flood Score',
+                'Road Flood Score',
+                'Railway Heatwave Score',
+                'Road Heatwave Score'
                 ],
             "Environment Score": [
                 'CO2e-Emissions Score', 
                 'Methane-Emissions Score',
                 'Air Quality Score',
-                'Waste Disposal Points Per 10000 Score',
-                'Share of Population without proper Access to Waste Disposal Score'
+                'Waste Disposal Score',
+                'Waste Disposal Gap Score'
                 
             ]
             }

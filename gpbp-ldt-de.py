@@ -182,12 +182,24 @@ with scatterplot:
     st.text("")
     st.text("")
     st.text("")
+    
+    
+    # Score Driver
     st.header("Score Driver Composition")
-    render_waterfall_chart_options(["Prosperity Score", "Infrastructure Score", "Livability Score"])
+    render_waterfall_chart_options(["Prosperity Score", "Infrastructure Score", "Livability Score"], "main")
     score_name = st.session_state.option_score_name_waterfall
-    fig_waterfall = create_waterfall_chart(df_score)
+    fig_waterfall = create_waterfall_chart(df_score, "main")
     if fig_waterfall:
         st.plotly_chart(fig_waterfall, use_container_width=True)
+        
+    # Subscore Driver
+    st.header("Sub-Score Driver Composition")
+    render_waterfall_chart_options(["Energy Access Score", "Digitalization Score", "Sustainable Transport Score", "Education Score", "Health Score", "Environment Score"], 
+                                   "sub")
+    sub_score_name = st.session_state.option_subscore_name_waterfall
+    fig_waterfall_sub = create_waterfall_chart(df_score, "sub")
+    if fig_waterfall_sub:
+        st.plotly_chart(fig_waterfall_sub, use_container_width=True)
     
     # 2D Scatterplot
     # with st.expander("View 2D Scatterplot Options"):
