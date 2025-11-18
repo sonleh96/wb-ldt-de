@@ -9,7 +9,7 @@ import unicodedata
 import numpy as np
 import pandas as pd
 
-from src.config import UI_TEXT, CHART_COLORS, DELTA_THRESHOLDS, QUADRANT_COLORS, SPATIAL_AUTOCORR_COLORS, SPATIAL_AUTOCORR_LABELS, SUB_COLS_DICT
+from src.config import UI_TEXT, CHART_COLORS, DELTA_THRESHOLDS, QUADRANT_COLORS, SPATIAL_AUTOCORR_COLORS, SPATIAL_AUTOCORR_LABELS, SCORE_COLS_DICT
 import plotly.graph_objects as go
 import plotly.express as px
 from src.caching import ResponseCacheManager
@@ -452,7 +452,7 @@ def render_waterfall_chart_options(score_names):
 
 def create_waterfall_chart(slice_waterfall):
     score_col = st.session_state.option_score_name_waterfall
-    sub_cols = SUB_COLS_DICT[score_col]
+    sub_cols = SCORE_COLS_DICT[score_col]
     
     # weights must sum to 1 (change to your real weights)
     weights = {c: 1/len(sub_cols) for c in sub_cols}
@@ -503,9 +503,9 @@ def create_waterfall_chart(slice_waterfall):
             range=[0, 100]
         ),
         showlegend=False,
-        margin=dict(l=40, r=20, t=60, b=40),
-        height=500,
-        width=700
+        margin=dict(l=10, r=20, t=60, b=40),
+        height=600,
+        width=600
     )
     
     return fig

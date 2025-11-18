@@ -104,11 +104,11 @@ def load_data(_storage_client):
     )
     
     gdf_score_geom = read_geojson_from_gcs(
-        _storage_client, BUCKET_NAME, "decision_engine/inputs/SRB_Full_geom_v6.json"
+        _storage_client, BUCKET_NAME, "decision_engine/inputs/SRB_Full_geom_v7.json"
     )
     
     df_score = read_csv_from_gcs(
-        _storage_client, BUCKET_NAME, "decision_engine/inputs/SRB_Full_Score_v6.csv"
+        _storage_client, BUCKET_NAME, "decision_engine/inputs/SRB_Full_Score_v7.csv"
     )
     
     regions_en = df_indicators["ENGLISH_NAME"].unique().tolist()
@@ -232,6 +232,9 @@ with choropleth:
     
     # Prepare data
     df_choropleth = gdf_score_geom.drop(['population_total'], axis=1)
+    df_choropleth = df_choropleth.merge(df_score[['GID_2', 'year', 'Energy Access Score', 'Digitalization Score', 'Sustainable Transport Score', 'Education Score', 'Health Score', 'Environment Score']], 
+                                        on=['GID_2', 'year'], 
+                                        how='left')
     df_choropleth = df_choropleth[COLUMN_ORDER]
     name_lookup = {normalize(s): s for s in df_choropleth["ENGLISH_NAME"].unique()}
     

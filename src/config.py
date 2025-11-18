@@ -216,14 +216,15 @@ INDICATOR_HIGHER_IS_BETTER = {
 
 INDICATOR_HIGHER_IS_BETTER_VIZ = {
     "Accessibility to Healthcare Services (unit: %)": True,
+    'Number of Hospitals per Capita (unit:)': True,
+    'Diversity of Health Services Index (unit:)': True,
     "Accessibility to School Services (unit: %)": True,
+    'Number of Schools per Capita (unit:)': True,
+    'Diversity of Schools Index (unit:)': True,
     "Diversity of Health Services": True,
     "PM 2.5 concentration (unit: µg/m3)": False,
-    "PM 10 concentration (unit: µg/m3)": False,
-    "NO2 concentration (unit: µg/m3)": False,
     "Total Methane Emissions (tonnes)": False,
     "Total CO2-Equivalent Emissions (tonnes)": False,
-    "Total CO2-Equivalent Emissions from Coal Power Plants (tonnes)": False,
     "Key Structure Average Broadband Download Speed (unit: megabites per second)": True,
     "Key Structures without Internet Access (unit: %)": False,
     "Average Cellular Download Speed (unit: megabites per second)": True,
@@ -238,6 +239,8 @@ INDICATOR_HIGHER_IS_BETTER_VIZ = {
     'Luminosity per Area (unit: nWatts/(cm2 x sr x km2))': True,
     'Share of Area Lit by Nighttime Luminosity (unit: %)': True,
     'Share of Population Exposed to Nighttime Luminosity (unit: %)': True,
+    'Waste Disposal Points Per 10000 (unit:)': True,
+    'Share of Population without proper Access to Waste Disposal (unit: %)': False,
 }
 
 COLUMN_ORDER = [
@@ -248,6 +251,12 @@ COLUMN_ORDER = [
     "Prosperity Score",
     "Infrastructure Score",
     "Livability Score",
+    "Energy Access Score",
+    "Digitalization Score",
+    "Sustainable Transport Score",
+    "Education Score",
+    "Health Score",
+    "Environment Score",
     "Nighttime Luminosity (unit: nWatts/(cm2 x sr)",
     'Luminosity per Capita (unit: nWatts/(cm2 x sr x person))',
     'Luminosity per Area (unit: nWatts/(cm2 x sr x km2))',
@@ -256,21 +265,23 @@ COLUMN_ORDER = [
     "Key Structure Average Broadband Download Speed (unit: megabites per second)",
     "Key Structures without Internet Access (unit: %)",
     "Average Cellular Download Speed (unit: megabites per second)",
-    "Accessibility to Healthcare Services (unit: %)",
-    "Accessibility to School Services (unit: %)",
-    "Diversity of Health Services",
     'Road Density (unit: km/km2)',
     'Railway Density (unit: km/km2)',
-    "PM 2.5 concentration (unit: µg/m3)",
-    "PM 10 concentration (unit: µg/m3)",
-    "NO2 concentration (unit: µg/m3)",
-    "Total Methane Emissions (unit: tonnes)",
-    "Total CO2-Equivalent Emissions (unit: tonnes)",
-    "Total CO2-Equivalent Emissions from Coal Power Plants (unit: tonnes)",
     "Railway Flood Risk (unit: %)",
     "Road Flood Risk (unit: %)",
     "Railway Heatwave Risk (unit: %)",
     "Road Heatwave Risk (unit: %)",
+    "Accessibility to Healthcare Services (unit: %)",
+    'Number of Hospitals per Capita (unit:)',
+    'Diversity of Health Services Index (unit:)',
+    "Accessibility to School Services (unit: %)",
+    'Number of Schools per Capita (unit:)',
+    'Diversity of Schools Index (unit:)',
+    "PM 2.5 concentration (unit: µg/m3)",
+    "Total Methane Emissions (unit: tonnes)",
+    "Total CO2-Equivalent Emissions (unit: tonnes)",
+    'Waste Disposal Points Per 10000 (unit:)',
+    'Share of Population without proper Access to Waste Disposal (unit: %)',
     "geometry"]
 
 DELTA_THRESHOLDS = {"good": 0.10, "warn": 0.03}
@@ -282,28 +293,55 @@ CHART_COLORS = {
     "national": "#1e88e5",
 }
 
-SUB_COLS_DICT = {"Prosperity Score": [
+SCORE_COLS_DICT = {"Prosperity Score": [
+                "Energy Access Score",
+                ],
+            "Infrastructure Score": [
+                "Digitalization Score",
+                "Sustainable Transport Score",
+
+                ],
+            "Livability Score": [
+                "Education Score",
+                "Health Score",
+                "Environment Score",
+            ]
+            }
+
+SUB_COLS_DICT = {"Energy Access Score": [
                 'Luminosity Score', 'Luminosity per Capita Score',
                 'Luminosity per Area Score', 'Area Lit Score', 'Population Lit Score'
                 ],
-            "Infrastructure Score": [
+            "Digitalization Score": [
                 'Key Structure Internet Score',
                 'Mobile Internet Score',
                 'Key Structure Internet Access Score',
-                'Accessibility to Hospitals Score',
+            ],
+            "Education Score": [
                 'Accessibility to Schools Score',
-                'Railway Density Score',
-                'Road Density Score'
+                'Number of Schools per Capita Score',
+                'Diversity of Schools Index Score'
                 ],
-            "Livability Score": [
+            "Health Score": [
+                'Accessibility to Hospitals Score',
+                'Number of Hospitals per Capita Score',
+                'Diversity of Health Services Index Score'
+                ],
+            "Sustainable Transport Score": [
+                'Railway Density Score',
+                'Road Density Score',
+                'Railway Flood Risk Score',
+                'Road Flood Risk Score',
+                'Railway Heatwave Risk Score',
+                'Road Heatwave Risk Score'
+                ],
+            "Environment Score": [
                 'CO2e-Emissions Score', 
-                'CO2e-Emissions from Coal Power Plants Score',
                 'Methane-Emissions Score',
                 'Air Quality Score',
-                'Railway Flood Score',
-                'Road Flood Score',
-                'Railway Heatwave Score',
-                'Road Heatwave Score'
+                'Waste Disposal Points Per 10000 Score',
+                'Share of Population without proper Access to Waste Disposal Score'
+                
             ]
             }
 
