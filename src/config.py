@@ -173,7 +173,7 @@ TRANSLATION_SYSTEM_PROMPT = """
 
 """
 
-ADDITIONAL_CONTEXT = {
+CBD_CONTEXT = {
     'Digitalization': """According to the Country Benchmarking Dashboard (CBD), Serbia has a national 4G Coverage Score of 98 and 4G Penetration Score of 22 (both out of 100) based on the EU average. 
                          A 4G coverage rate indicates the proportion of the population with access to a 4G mobile network signal, 
                          while the penetration rate measures the number of active 4G mobile users relative to the total population. 

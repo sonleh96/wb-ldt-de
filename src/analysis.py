@@ -9,57 +9,20 @@ import libpysal as lps
 from src.config import CATEGORY_INDICATOR_DICT, INDICATOR_HIGHER_IS_BETTER, SPATIAL_AUTOCORR_LABELS
 from src.ui import normalize
 
-def get_actual_column_name(df: pd.DataFrame, requested_col: str) -> str:
-    """
-    Get the actual column name from dataframe, handling case variations.
-    Returns the exact column name as it appears in the dataframe.
-    """
-    if requested_col in df.columns:
-        return requested_col
-    
-    # Try case-insensitive match
-    df_cols_lower = {col.lower(): col for col in df.columns}
-    if requested_col.lower() in df_cols_lower:
-        return df_cols_lower[requested_col.lower()]
-    
-    return requested_col  # Return original if not found
-
 @st.cache_data
 def extract_regional_data(df: pd.DataFrame, region: str, relevant_columns: List[str]) -> pd.DataFrame:
     """
     Filters the DataFrame for a specific region and columns.
-    Handles case variations in column names.
     """
-    # Create case-insensitive mapping of requested columns to actual columns
-    col_mapping = {}
-    df_cols_lower = {col.lower(): col for col in df.columns}
-    
-    for req_col in relevant_columns:
-        if req_col in df.columns:
-            col_mapping[req_col] = req_col
-        elif req_col.lower() in df_cols_lower:
-            col_mapping[req_col] = df_cols_lower[req_col.lower()]
-    
-    valid_columns = list(col_mapping.values())
+    valid_columns = [col for col in relevant_columns if col in df.columns]
     return df.loc[df["ENGLISH_NAME"] == region, valid_columns]
 
 @st.cache_data
 def extract_national_data(df: pd.DataFrame, relevant_columns: List[str]) -> pd.DataFrame:
     """
     Extracts national average data for specified columns.
-    Handles case variations in column names.
     """
-    # Create case-insensitive mapping of requested columns to actual columns
-    col_mapping = {}
-    df_cols_lower = {col.lower(): col for col in df.columns}
-    
-    for req_col in relevant_columns:
-        if req_col in df.columns:
-            col_mapping[req_col] = req_col
-        elif req_col.lower() in df_cols_lower:
-            col_mapping[req_col] = df_cols_lower[req_col.lower()]
-    
-    valid_columns = list(col_mapping.values())
+    valid_columns = [col for col in relevant_columns if col in df.columns]
     return df[valid_columns]
 
 def get_indicator_analysis(
@@ -134,23 +97,11 @@ def get_indicator_series(
 ) -> Tuple[pd.DataFrame, pd.DataFrame, Dict[str, float]]:
     """
     Returns muni and national series for a single indicator, plus latest-year values and deltas.
-    Handles case variations in column names.
     """
     full_name = indicator_code_to_full_name.get(indicator_code, indicator_code)
-    
-    # Get actual column names from dataframes (handling case variations)
-    actual_indicator_col = get_actual_column_name(df_indicators, indicator_code)
-    actual_avg_col = get_actual_column_name(averages_df.reset_index(), indicator_code)
-    
     cols = [indicator_code, 'ENGLISH_NAME', 'year']
-    regional_df = extract_regional_data(df_indicators, region_name, cols)
-    national_df = extract_national_data(averages_df.reset_index(), cols)
-    
-    # Rename using the actual column name that exists in the extracted dataframe
-    if actual_indicator_col in regional_df.columns:
-        regional_df = regional_df.rename(columns={actual_indicator_col: full_name})
-    if actual_avg_col in national_df.columns:
-        national_df = national_df.rename(columns={actual_avg_col: full_name})
+    regional_df = extract_regional_data(df_indicators, region_name, cols).rename(columns={indicator_code: full_name})
+    national_df = extract_national_data(averages_df.reset_index(), cols).rename(columns={indicator_code: full_name})
 
     if regional_df.empty or national_df.empty:
         return regional_df, national_df, {

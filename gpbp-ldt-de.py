@@ -92,10 +92,6 @@ def load_data(_storage_client):
         _storage_client, BUCKET_NAME, "decision_engine/inputs/Indicator List v3.csv",
         delimiter=",", encoding="cp1252", on_bad_lines="warn"
     )
-    # print(df_indicatorlist)
-    # df_indicators = read_csv_from_gcs(
-    #     _storage_client, BUCKET_NAME, "decision_engine/inputs/SRB Absolute Full_v4.csv"
-    # )
     
     df_projects = read_csv_from_gcs(
         _storage_client, BUCKET_NAME, "decision_engine/inputs/wbif_project_examples_v2.csv", sep=";"
@@ -112,23 +108,22 @@ def load_data(_storage_client):
         _storage_client, BUCKET_NAME, "decision_engine/inputs/SRB_Full_Score_v7.csv"
     )
     
-    df_indicators = gdf_score_geom.drop(['NAME_1', 'GID_2', 'PM 10 concentration (unit: µg/m3)', 'NO2 concentration (unit: µg/m3)',
+    df_dev_plan = read_csv_from_gcs(
+        _storage_client, BUCKET_NAME, "decision_engine/inputs/municipal_dev_plan.csv"
+    )
+    
+    return df_indicatorlist, df_projects, gdf_score_geom, df_score, df_dev_plan
+
+df_indicatorlist, df_projects, gdf_score_geom, df_score, df_dev_plan = load_data(storage_client)
+df_indicators = gdf_score_geom.drop(['NAME_1', 'GID_2', 'PM 10 concentration (unit: µg/m3)', 'NO2 concentration (unit: µg/m3)',
                                          'Total CO2-Equivalent Emissions from Coal Power Plants (unit: tonnes)',
                                          'Railway Flood Risk (unit: km)', 'Road Flood Risk (unit: km)', 'Railway Heatwave Risk (unit: km)', 
                                          'Road Heatwave Risk (unit: km)', 'Prosperity Score', 'population_total',
                                          'Infrastructure Score', 'Livability Score', 'geometry'], axis=1)
-    
-    regions_en = df_indicators["ENGLISH_NAME"].unique().tolist()
-    regions_sr = df_indicators["SERBIAN_NAME_CYRILLIC"].unique().tolist()
-    
-    print(df_indicators.columns)
-    print(df_indicatorlist['indicator_name_full'].tolist())
-    
-    averages_df = df_indicators.groupby("year")[df_indicators.columns[3:]].mean().reset_index()
-    
-    return df_indicatorlist, df_indicators, df_projects, regions_en, regions_sr, averages_df, gdf_score_geom, df_score
+regions_en = df_indicators["ENGLISH_NAME"].unique().tolist()
+regions_sr = df_indicators["SERBIAN_NAME_CYRILLIC"].unique().tolist()
+averages_df = df_indicators.groupby("year")[df_indicators.columns[3:]].mean().reset_index()
 
-df_indicatorlist, df_indicators, df_projects, regions_en, regions_sr, averages_df, gdf_score_geom, df_score = load_data(storage_client)
 
 # --- UI Rendering ---
 cache_manager = ResponseCacheManager(storage_client, BUCKET_NAME, CACHE_PATH, df_indicators)
@@ -627,7 +622,7 @@ with decision_engine:
                     if cached_en:
                         regional_summary_en = cached_en['content']
                     else:
-                        regional_summary_en = get_background_research(openai_client, en_region, en_category)
+                        regional_summary_en = get_background_research(openai_client, en_region, en_category, df_dev_plan)
                         cache_manager.save_response(region, category, 'research', regional_summary_en, 'en')
                     st.session_state.regional_summary_en = regional_summary_en
                 
@@ -785,240 +780,240 @@ with decision_engine:
         parsed_projects = _parse_projects_from_markdown(final_projects_en)
 
         # --- Prefetch top 2 project details (English) ---
-        prefetch_count = min(1, len(parsed_projects))
-        for i in range(prefetch_count):
-            p = parsed_projects[i]
-            if not cache_manager.get_cached_project_details(p["url"], language='en'):
-                with st.spinner(f"Fetching details for: {p['title']}"):
-                    try:
-                        md = get_project_review_document(openai_client, p["url"], model=None, temperature=None)
-                        cache_manager.save_project_details(p["url"], md, language='en', metadata={"title": p["title"]})
-                    except Exception as e:
-                        st.info(f"Could not prefetch details for {p['title']}: {e}")
+        # prefetch_count = min(1, len(parsed_projects))
+        # for i in range(prefetch_count):
+        #     p = parsed_projects[i]
+        #     if not cache_manager.get_cached_project_details(p["url"], language='en'):
+        #         with st.spinner(f"Fetching details for: {p['title']}"):
+        #             try:
+        #                 md = get_project_review_document(openai_client, p["url"], model=None, temperature=None)
+        #                 cache_manager.save_project_details(p["url"], md, language='en', metadata={"title": p["title"]})
+        #             except Exception as e:
+        #                 st.info(f"Could not prefetch details for {p['title']}: {e}")
 
         # --- Render per-project details expander ---
-        st.write("")
-        st.subheader("More Project Details")
-        for p in parsed_projects:
-            with st.expander(f"{p['title']} — More details"):
-                details_en = cache_manager.get_cached_project_details(p["url"], language='en')
-                if not details_en:
-                    with st.spinner("Researching project details..."):
-                        try:
-                            md = get_project_review_document(openai_client, p["url"], model=None, temperature=None)
-                            cache_manager.save_project_details(p["url"], md, language='en', metadata={"title": p["title"]})
-                            details_en = cache_manager.get_cached_project_details(p["url"], language='en')
-                        except Exception as e:
-                            st.warning(f"Unable to load project details: {e}")
-                            details_en = None
+        # st.write("")
+        # st.subheader("More Project Details")
+        # for p in parsed_projects:
+        #     with st.expander(f"{p['title']} — More details"):
+        #         details_en = cache_manager.get_cached_project_details(p["url"], language='en')
+        #         if not details_en:
+        #             with st.spinner("Researching project details..."):
+        #                 try:
+        #                     md = get_project_review_document(openai_client, p["url"], model=None, temperature=None)
+        #                     cache_manager.save_project_details(p["url"], md, language='en', metadata={"title": p["title"]})
+        #                     details_en = cache_manager.get_cached_project_details(p["url"], language='en')
+        #                 except Exception as e:
+        #                     st.warning(f"Unable to load project details: {e}")
+        #                     details_en = None
 
-                if details_en:
-                    created_at = details_en.get("created_at")
-                    freshness = ""
-                    try:
-                        ts = datetime.fromisoformat(created_at)
-                        hours_ago = int((datetime.now() - ts).total_seconds() // 3600)
-                        freshness = f"Last updated {hours_ago}h ago"
-                    except Exception:
-                        freshness = "Last updated recently"
+        #         if details_en:
+        #             created_at = details_en.get("created_at")
+        #             freshness = ""
+        #             try:
+        #                 ts = datetime.fromisoformat(created_at)
+        #                 hours_ago = int((datetime.now() - ts).total_seconds() // 3600)
+        #                 freshness = f"Last updated {hours_ago}h ago"
+        #             except Exception:
+        #                 freshness = "Last updated recently"
 
-                    content_md = details_en.get("content", "")
+        #             content_md = details_en.get("content", "")
 
-                    # Try to extract structured JSON block for deterministic tables
-                    def _extract_json_block(md: str):
-                        try:
-                            m = re.search(r"```json\s*([\s\S]*?)\s*```", md)
-                            if not m:
-                                return None
-                            import json as _json
-                            return _json.loads(m.group(1))
-                        except Exception:
-                            return None
+        #             # Try to extract structured JSON block for deterministic tables
+        #             def _extract_json_block(md: str):
+        #                 try:
+        #                     m = re.search(r"```json\s*([\s\S]*?)\s*```", md)
+        #                     if not m:
+        #                         return None
+        #                     import json as _json
+        #                     return _json.loads(m.group(1))
+        #                 except Exception:
+        #                     return None
 
-                    json_block = _extract_json_block(content_md)
-                    if json_block and isinstance(json_block, dict):
-                        narrative = (json_block.get("narrative_markdown") or "").strip()
+        #             json_block = _extract_json_block(content_md)
+        #             if json_block and isinstance(json_block, dict):
+        #                 narrative = (json_block.get("narrative_markdown") or "").strip()
 
-                        # Build tables as Markdown strings
-                        def build_financing_table(fs_list):
-                            if not isinstance(fs_list, list) or not fs_list:
-                                return ""
-                            lines = ["| Instrument | Amount | Source |", "|---|---|---|"]
-                            for row in fs_list:
-                                inst = str(row.get("instrument", "")).replace('|','\\|')
-                                amt = str(row.get("amount_text", "")).replace('|','\\|')
-                                sl = str(row.get("source_label", "")).replace('|','\\|')
-                                su = str(row.get("source_url", ""))
-                                src = f"[{sl}]({su})" if su else sl
-                                lines.append(f"| {inst} | {amt} | {src} |")
-                            return "\n".join(lines)
+        #                 # Build tables as Markdown strings
+        #                 def build_financing_table(fs_list):
+        #                     if not isinstance(fs_list, list) or not fs_list:
+        #                         return ""
+        #                     lines = ["| Instrument | Amount | Source |", "|---|---|---|"]
+        #                     for row in fs_list:
+        #                         inst = str(row.get("instrument", "")).replace('|','\\|')
+        #                         amt = str(row.get("amount_text", "")).replace('|','\\|')
+        #                         sl = str(row.get("source_label", "")).replace('|','\\|')
+        #                         su = str(row.get("source_url", ""))
+        #                         src = f"[{sl}]({su})" if su else sl
+        #                         lines.append(f"| {inst} | {amt} | {src} |")
+        #                     return "\n".join(lines)
 
-                        def build_timeline_table(tl_list):
-                            if not isinstance(tl_list, list) or not tl_list:
-                                return ""
-                            lines = ["| Date | Milestone | Source |", "|---|---|---|"]
-                            for row in tl_list:
-                                dt = str(row.get("date_iso", "")).replace('|','\\|')
-                                ms = str(row.get("milestone", "")).replace('|','\\|')
-                                sl = str(row.get("source_label", "")).replace('|','\\|')
-                                su = str(row.get("source_url", ""))
-                                src = f"[{sl}]({su})" if su else sl
-                                lines.append(f"| {dt} | {ms} | {src} |")
-                            return "\n".join(lines)
+        #                 def build_timeline_table(tl_list):
+        #                     if not isinstance(tl_list, list) or not tl_list:
+        #                         return ""
+        #                     lines = ["| Date | Milestone | Source |", "|---|---|---|"]
+        #                     for row in tl_list:
+        #                         dt = str(row.get("date_iso", "")).replace('|','\\|')
+        #                         ms = str(row.get("milestone", "")).replace('|','\\|')
+        #                         sl = str(row.get("source_label", "")).replace('|','\\|')
+        #                         su = str(row.get("source_url", ""))
+        #                         src = f"[{sl}]({su})" if su else sl
+        #                         lines.append(f"| {dt} | {ms} | {src} |")
+        #                     return "\n".join(lines)
 
-                        financing_md = build_financing_table(json_block.get("financing_structure") or [])
-                        timeline_md = build_timeline_table(json_block.get("updated_timeline") or [])
+        #                 financing_md = build_financing_table(json_block.get("financing_structure") or [])
+        #                 timeline_md = build_timeline_table(json_block.get("updated_timeline") or [])
 
-                        # Helper: insert a table after a heading line that mentions a keyword
-                        def insert_after_heading(doc: str, keyword: str, table: str) -> str:
-                            if not table:
-                                return doc
-                            try:
-                                pattern = re.compile(rf"^.*{re.escape(keyword)}.*$", re.IGNORECASE | re.MULTILINE)
-                                m = pattern.search(doc)
-                                if not m:
-                                    return doc + ("\n\n" + table)
-                                insert_pos = m.end()
-                                return doc[:insert_pos] + "\n\n" + table + doc[insert_pos:]
-                            except Exception:
-                                return doc + ("\n\n" + table)
+        #                 # Helper: insert a table after a heading line that mentions a keyword
+        #                 def insert_after_heading(doc: str, keyword: str, table: str) -> str:
+        #                     if not table:
+        #                         return doc
+        #                     try:
+        #                         pattern = re.compile(rf"^.*{re.escape(keyword)}.*$", re.IGNORECASE | re.MULTILINE)
+        #                         m = pattern.search(doc)
+        #                         if not m:
+        #                             return doc + ("\n\n" + table)
+        #                         insert_pos = m.end()
+        #                         return doc[:insert_pos] + "\n\n" + table + doc[insert_pos:]
+        #                     except Exception:
+        #                         return doc + ("\n\n" + table)
 
-                        # Start from narrative; inject tables near their semantic headings
-                        content_md = narrative
-                        if financing_md:
-                            content_md = insert_after_heading(content_md, "Financing Structure", financing_md)
-                        if timeline_md:
-                            content_md = insert_after_heading(content_md, "Updated Timeline", timeline_md)
+        #                 # Start from narrative; inject tables near their semantic headings
+        #                 content_md = narrative
+        #                 if financing_md:
+        #                     content_md = insert_after_heading(content_md, "Financing Structure", financing_md)
+        #                 if timeline_md:
+        #                     content_md = insert_after_heading(content_md, "Updated Timeline", timeline_md)
 
-                    # Normalize common table variants into GitHub-style Markdown tables
-                    def _normalize_markdown_tables_inline(doc: str) -> str:
-                        if not isinstance(doc, str):
-                            return doc
+        #             # Normalize common table variants into GitHub-style Markdown tables
+        #             def _normalize_markdown_tables_inline(doc: str) -> str:
+        #                 if not isinstance(doc, str):
+        #                     return doc
 
-                        def reformat_inline_table(line: str) -> str:
-                            original = line
-                            # Find first pipe; treat anything before as label text (e.g., "Financing Structure")
-                            first_pipe_idx = line.find('|')
-                            prefix = line[:first_pipe_idx] if first_pipe_idx > -1 else ''
-                            table_part = line[first_pipe_idx:] if first_pipe_idx > -1 else line
+        #                 def reformat_inline_table(line: str) -> str:
+        #                     original = line
+        #                     # Find first pipe; treat anything before as label text (e.g., "Financing Structure")
+        #                     first_pipe_idx = line.find('|')
+        #                     prefix = line[:first_pipe_idx] if first_pipe_idx > -1 else ''
+        #                     table_part = line[first_pipe_idx:] if first_pipe_idx > -1 else line
 
-                            # Split rows by double-pipe separators
-                            rows = [r.strip() for r in re.split(r"\s*\|\|\s*", table_part) if r.strip()]
-                            if not rows:
-                                return original
+        #                     # Split rows by double-pipe separators
+        #                     rows = [r.strip() for r in re.split(r"\s*\|\|\s*", table_part) if r.strip()]
+        #                     if not rows:
+        #                         return original
 
-                            parsed_rows = []
-                            for r in rows:
-                                cells = [c.strip() for c in r.strip('|').split('|')]
-                                # drop empty trailing cells
-                                while cells and cells[-1] == '':
-                                    cells.pop()
-                                parsed_rows.append(cells)
+        #                     parsed_rows = []
+        #                     for r in rows:
+        #                         cells = [c.strip() for c in r.strip('|').split('|')]
+        #                         # drop empty trailing cells
+        #                         while cells and cells[-1] == '':
+        #                             cells.pop()
+        #                         parsed_rows.append(cells)
 
-                            # Handle header: drop label cell like "Financing Structure" or "Updated Timeline"
-                            if parsed_rows and parsed_rows[0]:
-                                first_cell_lower = parsed_rows[0][0].lower()
-                                if first_cell_lower.startswith('financing') or first_cell_lower.startswith('updated timeline') or first_cell_lower.startswith('timeline'):
-                                    parsed_rows[0] = parsed_rows[0][1:]
+        #                     # Handle header: drop label cell like "Financing Structure" or "Updated Timeline"
+        #                     if parsed_rows and parsed_rows[0]:
+        #                         first_cell_lower = parsed_rows[0][0].lower()
+        #                         if first_cell_lower.startswith('financing') or first_cell_lower.startswith('updated timeline') or first_cell_lower.startswith('timeline'):
+        #                             parsed_rows[0] = parsed_rows[0][1:]
 
-                            if not parsed_rows or not parsed_rows[0]:
-                                return original
+        #                     if not parsed_rows or not parsed_rows[0]:
+        #                         return original
 
-                            header = parsed_rows[0]
-                            # Skip any explicit separator rows containing ---
-                            data_rows = [row for row in parsed_rows[1:] if not any('---' in c for c in row)]
+        #                     header = parsed_rows[0]
+        #                     # Skip any explicit separator rows containing ---
+        #                     data_rows = [row for row in parsed_rows[1:] if not any('---' in c for c in row)]
 
-                            # Build proper Markdown table
-                            table_lines = []
-                            table_lines.append('|' + ' | '.join(header) + '|')
-                            table_lines.append('|' + '|'.join(['---'] * len(header)) + '|')
-                            for row in data_rows:
-                                # pad/truncate to header length for stability
-                                if len(row) < len(header):
-                                    row = row + [''] * (len(header) - len(row))
-                                elif len(row) > len(header):
-                                    row = row[:len(header)]
-                                table_lines.append('|' + ' | '.join(row) + '|')
-                            return '\n'.join(table_lines)
+        #                     # Build proper Markdown table
+        #                     table_lines = []
+        #                     table_lines.append('|' + ' | '.join(header) + '|')
+        #                     table_lines.append('|' + '|'.join(['---'] * len(header)) + '|')
+        #                     for row in data_rows:
+        #                         # pad/truncate to header length for stability
+        #                         if len(row) < len(header):
+        #                             row = row + [''] * (len(header) - len(row))
+        #                         elif len(row) > len(header):
+        #                             row = row[:len(header)]
+        #                         table_lines.append('|' + ' | '.join(row) + '|')
+        #                     return '\n'.join(table_lines)
 
-                        # Also handle bullet-line blocks like "- field1 | field2 | [label](url)"
-                        lines = doc.split('\n')
-                        out_lines = []
-                        i = 0
-                        while i < len(lines):
-                            if lines[i].lstrip().startswith('- ') and '|' in lines[i]:
-                                block = []
-                                j = i
-                                while j < len(lines) and lines[j].lstrip().startswith('- ') and '|' in lines[j]:
-                                    block.append(lines[j].lstrip()[2:].strip())
-                                    j += 1
-                                rows = [[c.strip() for c in r.strip('|').split('|')] for r in block if '|' in r]
-                                col_count = max((len(r) for r in rows), default=0)
-                                if col_count >= 2 and all(len(r) == col_count for r in rows[: min(3, len(rows))]):
-                                    header = ['Instrument', 'Amount', 'Source'] if col_count == 3 else [f'Col {k+1}' for k in range(col_count)]
-                                    table_lines = ['|' + ' | '.join(header) + '|', '|' + '|'.join(['---'] * len(header)) + '|']
-                                    for r in rows:
-                                        table_lines.append('|' + ' | '.join(r) + '|')
-                                    out_lines.append('\n'.join(table_lines))
-                                    i = j
-                                    continue
-                            if '||' in lines[i] and '|' in lines[i]:
-                                out_lines.append(reformat_inline_table(lines[i]))
-                            else:
-                                out_lines.append(lines[i])
-                            i += 1
-                        return '\n'.join(out_lines)
+        #                 # Also handle bullet-line blocks like "- field1 | field2 | [label](url)"
+        #                 lines = doc.split('\n')
+        #                 out_lines = []
+        #                 i = 0
+        #                 while i < len(lines):
+        #                     if lines[i].lstrip().startswith('- ') and '|' in lines[i]:
+        #                         block = []
+        #                         j = i
+        #                         while j < len(lines) and lines[j].lstrip().startswith('- ') and '|' in lines[j]:
+        #                             block.append(lines[j].lstrip()[2:].strip())
+        #                             j += 1
+        #                         rows = [[c.strip() for c in r.strip('|').split('|')] for r in block if '|' in r]
+        #                         col_count = max((len(r) for r in rows), default=0)
+        #                         if col_count >= 2 and all(len(r) == col_count for r in rows[: min(3, len(rows))]):
+        #                             header = ['Instrument', 'Amount', 'Source'] if col_count == 3 else [f'Col {k+1}' for k in range(col_count)]
+        #                             table_lines = ['|' + ' | '.join(header) + '|', '|' + '|'.join(['---'] * len(header)) + '|']
+        #                             for r in rows:
+        #                                 table_lines.append('|' + ' | '.join(r) + '|')
+        #                             out_lines.append('\n'.join(table_lines))
+        #                             i = j
+        #                             continue
+        #                     if '||' in lines[i] and '|' in lines[i]:
+        #                         out_lines.append(reformat_inline_table(lines[i]))
+        #                     else:
+        #                         out_lines.append(lines[i])
+        #                     i += 1
+        #                 return '\n'.join(out_lines)
 
-                    # Fallback: if JSON missing, try a stricter retry (JSON-only). Then normalize if needed.
-                    if not json_block:
-                        try:
-                            with st.spinner("Standardizing format..."):
-                                md_retry = get_project_review_document(openai_client, p["url"], model=None, temperature=None, json_only=True)
-                                import json as _json
-                                jb = _json.loads(md_retry) if md_retry else None
-                                if isinstance(jb, dict) and (jb.get("financing_structure") or jb.get("updated_timeline")):
-                                    # Render tables + narrative
-                                    fs = jb.get("financing_structure") or []
-                                    tl = jb.get("updated_timeline") or []
-                                    parts = []
-                                    if fs:
-                                        parts.append("| Instrument | Amount | Source |\n|---|---|---|")
-                                        for row in fs:
-                                            inst = str(row.get("instrument", "")).replace('|','\\|')
-                                            amt = str(row.get("amount_text", "")).replace('|','\\|')
-                                            sl = str(row.get("source_label", "")).replace('|','\\|')
-                                            su = str(row.get("source_url", ""))
-                                            src = f"[{sl}]({su})" if su else sl
-                                            parts.append(f"| {inst} | {amt} | {src} |")
-                                    if tl:
-                                        parts.append("\n| Date | Milestone | Source |\n|---|---|---|")
-                                        for row in tl:
-                                            dt = str(row.get("date_iso", "")).replace('|','\\|')
-                                            ms = str(row.get("milestone", "")).replace('|','\\|')
-                                            sl = str(row.get("source_label", "")).replace('|','\\|')
-                                            su = str(row.get("source_url", ""))
-                                            src = f"[{sl}]({su})" if su else sl
-                                            parts.append(f"| {dt} | {ms} | {src} |")
-                                    content_md = "\n".join(parts) + "\n\n" + (jb.get("narrative_markdown") or content_md)
-                                    # Save standardized content for future loads
-                                    cache_manager.save_project_details(p["url"], content_md, language='en', metadata={"title": p["title"], "standardized": True})
-                        except Exception:
-                            pass
+        #             # Fallback: if JSON missing, try a stricter retry (JSON-only). Then normalize if needed.
+        #             if not json_block:
+        #                 try:
+        #                     with st.spinner("Standardizing format..."):
+        #                         md_retry = get_project_review_document(openai_client, p["url"], model=None, temperature=None, json_only=True)
+        #                         import json as _json
+        #                         jb = _json.loads(md_retry) if md_retry else None
+        #                         if isinstance(jb, dict) and (jb.get("financing_structure") or jb.get("updated_timeline")):
+        #                             # Render tables + narrative
+        #                             fs = jb.get("financing_structure") or []
+        #                             tl = jb.get("updated_timeline") or []
+        #                             parts = []
+        #                             if fs:
+        #                                 parts.append("| Instrument | Amount | Source |\n|---|---|---|")
+        #                                 for row in fs:
+        #                                     inst = str(row.get("instrument", "")).replace('|','\\|')
+        #                                     amt = str(row.get("amount_text", "")).replace('|','\\|')
+        #                                     sl = str(row.get("source_label", "")).replace('|','\\|')
+        #                                     su = str(row.get("source_url", ""))
+        #                                     src = f"[{sl}]({su})" if su else sl
+        #                                     parts.append(f"| {inst} | {amt} | {src} |")
+        #                             if tl:
+        #                                 parts.append("\n| Date | Milestone | Source |\n|---|---|---|")
+        #                                 for row in tl:
+        #                                     dt = str(row.get("date_iso", "")).replace('|','\\|')
+        #                                     ms = str(row.get("milestone", "")).replace('|','\\|')
+        #                                     sl = str(row.get("source_label", "")).replace('|','\\|')
+        #                                     su = str(row.get("source_url", ""))
+        #                                     src = f"[{sl}]({su})" if su else sl
+        #                                     parts.append(f"| {dt} | {ms} | {src} |")
+        #                             content_md = "\n".join(parts) + "\n\n" + (jb.get("narrative_markdown") or content_md)
+        #                             # Save standardized content for future loads
+        #                             cache_manager.save_project_details(p["url"], content_md, language='en', metadata={"title": p["title"], "standardized": True})
+        #                 except Exception:
+        #                     pass
 
-                    # Fallback: normalize loose table patterns
-                    content_md = _normalize_markdown_tables_inline(content_md)
+        #             # Fallback: normalize loose table patterns
+        #             content_md = _normalize_markdown_tables_inline(content_md)
 
-                    if lang_code == 'sr':
-                        try:
-                            with st.spinner("Translating details..."):
-                                content_md = translate_en_to_sr(openai_client, content_md)
-                                # Save translated version for future opens
-                                cache_manager.save_project_details(p["url"], content_md, language='sr', metadata={"title": p["title"], "translated_from": created_at})
-                        except Exception:
-                            pass
+        #             if lang_code == 'sr':
+        #                 try:
+        #                     with st.spinner("Translating details..."):
+        #                         content_md = translate_en_to_sr(openai_client, content_md)
+        #                         # Save translated version for future opens
+        #                         cache_manager.save_project_details(p["url"], content_md, language='sr', metadata={"title": p["title"], "translated_from": created_at})
+        #                 except Exception:
+        #                     pass
 
-                    st.caption(f"{freshness} • Web sources")
-                    st.markdown(content_md)
+        #             st.caption(f"{freshness} • Web sources")
+        #             st.markdown(content_md)
 
     # --- New Analysis Button ---
     if st.session_state.stage > 0:

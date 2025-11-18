@@ -1,10 +1,11 @@
 import streamlit as st
 from openai import OpenAI
+import pandas as pd
 
 from src.config import (
     SYSTEM_MESSAGE,
     TRANSLATION_SYSTEM_PROMPT,
-    ADDITIONAL_CONTEXT,
+    CBD_CONTEXT,
     PROJECT_REVIEW_MODEL
 )
 
@@ -61,10 +62,13 @@ def get_regional_narrative(client: OpenAI, region: str, category: str, compariso
     )
     return response.choices[0].message.content
 
-def get_background_research(client: OpenAI, region: str, subcategory: str) -> str:
+def get_background_research(client: OpenAI, region: str, subcategory: str, df_dev_plan: pd.DataFrame) -> str:
     """
     Generates a background research summary for a given region and subcategory.
     """
+    
+    dev_plan = df_dev_plan[(df_dev_plan['region'] == region) & (df_dev_plan['category'] == subcategory)].reset_index(drop=True)
+    
     research_system_message = """
         # Role
         You are a policy researcher and data scientist specializing in countries located in the Western Balkans. 
@@ -79,12 +83,18 @@ def get_background_research(client: OpenAI, region: str, subcategory: str) -> st
         - The new information should come from reliable sources such as government websites,the World Bank, the European Commission, the OECD, etc.
         - Clearly state the region's most relevant strengths, weaknesses, and challenges, and opportunities.
         - Organize the information in a structured way, with clear headings and subheadings. 
+        - When searching the web, only use official government sources or reliable news sites. Do not use websites like Wikipedia. 
 
         # Requirements
-        - Summarize the results in ≤ 200 words (but don't mention this requirement in the output). Do not print out the word count either.
+        - Summarize the results in ≤ 400 words (but don't mention this requirement in the output). Do not print out the word count either.
         - Cite the sources in the format with hyperlinks [Source: <source name>](<source URL>). Make sure the hyperlinks are working and clickable -> open in a new tab.
-        - Incorporate the following additional context, if applicable. If the source is the context (Country Benchmarking Dashboard), use the source name "PIMxPAM Country Benchmarking Dashboard" and the source URL "https://cbd.pim-pam.net/":
-            {ADDITIONAL_CONTEXT[subcategory]}
+        - Incorporate and Prioritize the following additional context, if available. And also please cite them using the bolded text.
+            - **Official Regional Development Plan for {region} municipality of Serbia**:
+                - Current situation: {dev_plan.loc[0, 'current situation']}
+                - Key challenges: {dev_plan.loc[0, 'key challenges']}
+                - Planned measures and priorities: **{dev_plan.loc[0, 'planned measures and priorities']}
+            - **GPBP Country Benchmarking Dashboard (CBD)** with its source URL "https://cbd.pim-pam.net/":
+                {CBD_CONTEXT[subcategory]}
         - New information must not contradict the existing context (if available).
         - Do not suggest "Let me know if you’d like a deeper dive into any of these areas." or anything similar in the output.
     
@@ -109,11 +119,6 @@ def get_background_research(client: OpenAI, region: str, subcategory: str) -> st
         **Opportunities:**
         - [Opportunity 1]
         - [Opportunity 2]
-        - ...
-        
-        **Context from the PIMxPAM Country Benchmarking Dashboard:** (https://cbd.pim-pam.net/):
-        - [Context 1]
-        - [Context 2]
         - ...
         
     """
@@ -150,8 +155,7 @@ def get_initial_recommendations(client: OpenAI, region: str, subcategory: str, r
         - Policy recommendations must be actionable at the municipal level.
         - Focus on projects implementable within 3-5 years.
         - Follow the specified format exactly.
-        - Incorporate additional context if it aligns with the analysis:
-            {ADDITIONAL_CONTEXT[subcategory]}
+
         # Format (Follow Exactly)
         Based on the regional analysis data for {region}, here are the 5 most viable public investment projects ranked by implementation feasibility:
 

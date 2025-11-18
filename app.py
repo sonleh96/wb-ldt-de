@@ -38,9 +38,9 @@ st.logo(gpbp_logo, size='large')
 pages = {
     # "Home": [st.Page("home.py", title="Home")],
     
-    "GPBP Tools": [
-        st.Page("gpbp-ldt-de.py", title="Local Development Tracker Decision Engine (LDT-DE)"),
-        st.Page("gpbp-pia.py", title="Public Infrastructure Access Tool (PIA)"),
+    "GPBP-LDT-DE": [
+        st.Page("gpbp-ldt-de.py", title="Launch the app"),
+        # st.Page("gpbp-pia.py", title="Public Infrastructure Access Tool (PIA)"),
     ],
     "Resources": [
         st.Page("about.py", title="About"),
