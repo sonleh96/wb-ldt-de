@@ -175,12 +175,17 @@ Serbia's municipalities face diverse and complex development challenges. While s
 
 ## Visualizing development needs across Serbia
 
-The **Local Development Tracker Decision Engine (LDT-DE)** visualizes how drivers of development challenges affect municipalities across Serbia. By integrating geospatial data, remote sensing, and advanced analytics, the LDT-DE provides a comprehensive view of each municipality's strengths and vulnerabilities across three critical pillars: **Prosperity, Livability, and Infrastructure**.
+The **Local Development Tracker Decision Engine (LDT-DE)** visualizes how drivers of development challenges affect municipalities across Serbia. By integrating geospatial data, remote sensing, and advanced analytics, the LDT-DE provides a comprehensive view of each municipality's strengths and vulnerabilities across three critical pillars:
+
+- **Prosperity** – Measures economic vitality through energy access and consumption patterns. Using nighttime luminosity data, this pillar assesses how effectively municipalities provide energy to their populations and built-up areas, serving as a proxy for economic development and industrial activity.
+
+- **Livability** – Evaluates quality of life through education, health, and environmental conditions. This pillar examines access to healthcare and educational services, solid waste management capacity, greenhouse gas emissions, and air quality to understand how well municipalities support human development and environmental sustainability.
+
+- **Infrastructure** – Assesses the availability and resilience of critical infrastructure systems. This pillar focuses on digital connectivity, transportation networks (road and rail), and the vulnerability of these systems to climate risks, measuring a municipality's capacity to provide and maintain essential services.
 
 Better understanding of the intersections between economic development, quality of life, and infrastructure resilience is critical to effectively targeting investments where they are needed most. The LDT-DE provides a robust, data-driven approach to understanding locally relevant conditions at the municipal scale.
 
 Comprising indicators across multiple development domains – from energy access and digital connectivity to healthcare accessibility and transportation networks – this analytical tool integrates the cumulative factors that shape a community's development trajectory. Equipping policymakers with actionable data enables them to prioritize resources, allocate funding strategically, and advocate for the changes their communities need.
-
 
 """)
 
