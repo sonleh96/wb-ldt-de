@@ -216,7 +216,7 @@ st.markdown("<hr style='border: 1px solid #ddd; margin: 2rem 0;'>", unsafe_allow
 st.markdown("## Scoring and Aggregation")
 
 st.markdown("""
-To compute the main scores from the indicators in a standardized manner, the Toxicological Prioritization Index (ToxPI) approach (Marvel et al. 2018; Reif et al. 2013; Bhandari et al. 2020, Lewis et al. 2023) was used, which has been used extensively to communicate risk prioritization and profiling information. 
+To compute the main scores from the indicators in a standardized manner, the Toxicological Prioritization Index (ToxPI) approach (Marvel et al. 2018; Reif et al. 2013; Bhandari et al. 2020; Lewis et al. 2023) was used, which has been used extensively to communicate risk prioritization and profiling information. 
 ToxPI utilizes a weighted average to aggregate data to provide an overall relative aggregate score. Each indicator used to compute the categories was equally weighted upon aggregation. Scores were converted to percentiles from 0 – 100, where higher values indicate greater performance. 
 Each indicator, category, and score were equally weighted at each aggregation level. This ensures that the scores are fair and transparent, and that the scores are not biased by the weighting of the indicators.
 This methodology has been previously utilized by the US Environmental Defense Fund's [Climate Vulnerability Index](https://www.climatevulnerabilityindex.org/) tool.
@@ -236,8 +236,8 @@ The LDT-DE leverages Large Language Models (LLMs) to enhance data analysis and i
 - **Recommendation Synthesis**: AI-generated investment recommendations based on multi-indicator analysis
 
 ### Use Cases
-1. **Project Alignment**: Match municipal needs with WBIF/IFI project templates and eligibility criteria
-2. **Gap Analysis**: Identify infrastructure and service gaps relative to national benchmarks
+1. **Gap Analysis**: Identify gaps in Prosperity, Livability, and Infrastructure relative to national benchmarks
+2. **Project Alignment**: Match municipal needs with existing WBIF projects and eligibility criteria
 3. **Best Practice Identification**: Surface successful interventions on the subnational and national level in the Western Balkans.
 
 ### Quality Assurance
@@ -285,7 +285,7 @@ st.markdown("""
 ### Contact
 
 For questions about the methodology or data sources, please contact:
-- **LDT-DE Product Owner**: [Son Le - World Bank International STC](mailto:sonle.h96@gmail.com)
+- **LDT-DE Product Owner**: Son Le at sonle.h96@gmail.com
 
 ### Acknowledgments
 

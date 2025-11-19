@@ -397,8 +397,8 @@ with col2:
             <div class="card-title" style="color: #dc2626;">⚠️ Important Disclaimer</div>
             <div class="card-text">
                 The GPBP Tools leverage <strong>Generative AI</strong> to analyze data and provide recommendations. 
-                While we strive for accuracy, AI-generated responses may occasionally contain inaccuracies, 
-                outdated information, or unintended biases. We strongly recommend that users 
+                While we strive for accuracy, AI-generated responses <strong>may occasionally contain inaccuracies, 
+                outdated information, or unintended biases</strong>. We strongly recommend that users 
                 <strong>verify critical information independently</strong> before making decisions based on these outputs.
             </div>
         </div>
@@ -436,7 +436,7 @@ with col5:
 # Additional spacing and contact info
 st.markdown("""
     <div style="text-align: center; margin-top: 60px; padding: 20px; color: #6b7280;">
-        <p style="margin-bottom: 10px;">For inquiries and feedback, please email <a href="mailto:kkaiser@worldbank.org">kkaiser@worldbank.org</a> or <a href="mailto:sonle.h96@gmail.com">sonle.h96@gmail.com</a></p>
+        <p style="margin-bottom: 10px;">For inquiries and feedback, please email <a href="kkaiser@worldbank.org">kkaiser@worldbank.org</a> or <a href="sonle.h96@gmail.com">sonle.h96@gmail.com</a></p>
         <p style="font-size: 0.9rem;">© 2024 World Bank Group - <a href="https://pim-pam.net/" target="_blank">PimPam GPBP</a></p>
     </div>
 """, unsafe_allow_html=True)
