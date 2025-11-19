@@ -365,7 +365,7 @@ with col2:
     # Add clickable link to About page
     st.markdown("<div class='card-button-wrapper' style='margin-top: 15px;'>", unsafe_allow_html=True)
     if st.button("Browse our available resources", key="about_link", use_container_width=True):
-        st.switch_page("about.py")
+        st.switch_page("resources.py")
     st.markdown("</div>", unsafe_allow_html=True)
 
 with col3:
@@ -386,23 +386,22 @@ with col3:
 
 st.markdown('</div>', unsafe_allow_html=True)  # Close columns-section
 
-st.markdown("<div class='section-divider'></div>", unsafe_allow_html=True)
+# st.markdown("<div class='section-divider'></div>", unsafe_allow_html=True)
 
-# Disclaimer Section
-
-col1, col2, col3 =  st.columns([1, 3, 1])
-with col2:
-    st.markdown("""
-        <div class="info-card" style="border-left-color: #dc2626; background: #fef2f2;">
-            <div class="card-title" style="color: #dc2626;">⚠️ Important Disclaimer</div>
-            <div class="card-text">
-                The GPBP Tools leverage <strong>Generative AI</strong> to analyze data and provide recommendations. 
-                While we strive for accuracy, AI-generated responses <strong>may occasionally contain inaccuracies, 
-                outdated information, or unintended biases</strong>. We strongly recommend that users 
-                <strong>verify critical information independently</strong> before making decisions based on these outputs.
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
+# # Disclaimer Section
+# col1, col2, col3 =  st.columns([1, 3, 1])
+# with col2:
+#     st.markdown("""
+#         <div class="info-card" style="border-left-color: #dc2626; background: #fef2f2;">
+#             <div class="card-title" style="color: #dc2626;">⚠️ Important Disclaimer</div>
+#             <div class="card-text">
+#                 The GPBP Tools leverage <strong>Generative AI</strong> to analyze data and provide recommendations. 
+#                 While we strive for accuracy, AI-generated responses <strong>may occasionally contain inaccuracies, 
+#                 outdated information, or unintended biases</strong>. We strongly recommend that users 
+#                 <strong>verify critical information independently</strong> before making decisions based on these outputs.
+#             </div>
+#         </div>
+#     """, unsafe_allow_html=True)
 
 
 # Footer Section
