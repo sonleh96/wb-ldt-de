@@ -211,9 +211,8 @@ to ensure reliability and transparency. More information on the data sources can
 For how the indicators were individually computed, please refer to the [Indicator Methodology](https://docs.google.com/document/d/17LhzOH-EnxfAWaBF8_FHCup8E_fsDe4p0VVfrUG4Aac/edit?usp=sharing).
 """)
 
-st.markdown("<hr style='border: 1px solid #ddd; margin: 2rem 0;'>", unsafe_allow_html=True)
 # Scoring and Aggregation
-st.markdown("## Scoring and Aggregation")
+st.markdown("### Scoring and Aggregation")
 
 st.markdown("""
 To compute the main scores from the indicators in a standardized manner, the Toxicological Prioritization Index (ToxPI) approach (Marvel et al. 2018; Reif et al. 2013; Bhandari et al. 2020; Lewis et al. 2023) was used, which has been used extensively to communicate risk prioritization and profiling information. 
@@ -282,15 +281,17 @@ st.markdown("## References and Further Information")
 
 st.markdown("""
 
-### Contact
 
-For questions about the methodology or data sources, please contact:
-- **LDT-DE Product Owner**: Son Le at sonle.h96@gmail.com
+### Contact and Inquiries
+
+For questions and/or feedback, please contact:
+- **Email**: [sonle.h96@gmail.com](sonle.h96@gmail.com)
+
 
 ### Acknowledgments
 
 The LDT-DE methodology draws inspiration from established tools including the [U.S. Climate Vulnerability Index](https://www.climatevulnerabilityindex.org/), 
-the [EU Regional Competitiveness Index](https://ec.europa.eu/regional_policy/information-sources/maps/regional-competitiveness_en), The Big Data Observatory,and various World Bank spatial planning frameworks. 
+the [EU Regional Competitiveness Index](https://ec.europa.eu/regional_policy/information-sources/maps/regional-competitiveness_en), the Big Data Observatory, and various World Bank spatial planning frameworks. 
 We acknowledge the Serbian Ministry of Finance, Republic Geodetic Authority, and our development partners 
 for their data contributions and technical input.
 """)
@@ -319,6 +320,6 @@ with col5:
 st.markdown("""
 <div style='text-align: center; color: #666; font-size: 0.85rem; margin-top: 2rem;'>
     <p><em>Methodology version 2.0 | Last updated: November 2025</em></p>
-    <p>© 2024 World Bank Group | <a href="https://pim-pam.net/" target="_blank">PimPam Network</a></p>
+    <p>© 2024 World Bank Group | <a href="https://pim-pam.net/" target="_blank">PimPam GPBP</a></p>
 </div>
 """, unsafe_allow_html=True)
