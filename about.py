@@ -124,6 +124,35 @@ st.markdown("""
             transform: translateY(-2px) !important;
             box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3) !important;
         }
+        
+        .columns-section {
+            padding: 0 3rem;
+        }
+        
+        /* Footer section */
+        .footer-section {
+            text-align: center;
+            padding: 20px 20px 0 20px;
+        }
+        
+        .footer-text {
+            color: #1e3a8a;
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 60px;
+        }
+        
+        @media (max-width: 768px) {
+            .columns-section {
+                padding: 0 1.5rem;
+            }
+            
+            .stButton > button {
+                font-size: 1.2rem;
+                padding: 20px 40px;
+                min-height: 60px;
+            }
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -220,9 +249,19 @@ st.markdown("""
 For questions, feedback, or partnership opportunities, please contact:
 - **Email**: [kkaiser@worldbank.org](mailto:kkaiser@worldbank.org) or [sonle.h96@gmail.com](mailto:sonle.h96@gmail.com)
 - **PimPam Network**: [https://pim-pam.net/](https://pim-pam.net/)
-
----
 """)
+
+st.markdown("<hr style='border: 1px solid #ddd; margin: 2rem 0;'>", unsafe_allow_html=True)
+
+# Footer Section
+st.markdown('<div class="columns-section">', unsafe_allow_html=True)
+st.markdown("""
+    <div class="footer-section">
+        <div class="footer-text">
+            Implemented by
+        </div>
+    </div>
+""", unsafe_allow_html=True)
 
 # Organization Logos
 col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 1])
@@ -248,4 +287,6 @@ st.markdown("""
     <p>© 2024 World Bank Group | <a href="https://pim-pam.net/" target="_blank">PimPam GPBP</a></p>
 </div>
 """, unsafe_allow_html=True)
+
+st.markdown('</div>', unsafe_allow_html=True)  # Close columns-section
 

@@ -105,6 +105,57 @@ st.markdown("""
             font-weight: 500;
             margin-top: 0.5rem;
         }
+            
+        /* Green launch button styling */
+        .stButton > button {
+            background-color: green !important;
+            color: white !important;
+            font-size: 1.1rem !important;
+            font-weight: 600 !important;
+            padding: 15px 40px !important;
+            border-radius: 8px !important;
+            border: none !important;
+            cursor: pointer !important;
+            transition: all 0.3s !important;
+            min-height: 60px !important;
+        }
+        
+        .stButton > button:hover {
+            background-color: #059669 !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3) !important;
+            
+        }
+        
+        .columns-section {
+            padding: 0 3rem;
+        }
+        
+        /* Footer section */
+        .footer-section {
+            text-align: center;
+            padding: 20px 20px 0 20px;
+        }
+        
+        .footer-text {
+            color: #1e3a8a;
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 60px;
+        }
+        
+        @media (max-width: 768px) {
+            .columns-section {
+                padding: 0 1.5rem;
+            }
+            
+            
+            .stButton > button {
+                font-size: 1.2rem;
+                padding: 20px 40px;
+                min-height: 60px;
+            }
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -164,6 +215,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+        
 st.markdown("<hr style='border: 1px solid #ddd; margin: 2rem 0;'>", unsafe_allow_html=True)
 
 # Additional Resources Section
@@ -180,6 +232,34 @@ For questions about these resources or to request additional documentation, plea
 """)
 
 st.markdown("<hr style='border: 1px solid #ddd; margin: 2rem 0;'>", unsafe_allow_html=True)
+
+# Call to action section
+st.markdown("""
+## Explore the LDT Decision Engine
+
+Ready to see how your municipality ranks across development indicators? Launch the tool to explore interactive visualizations, compare municipalities, and access AI-powered insights for evidence-based planning.
+""")
+
+st.markdown("", unsafe_allow_html=True)
+st.markdown("", unsafe_allow_html=True)
+# Launch Button
+col1, col2, col3 = st.columns([1, 2, 1])
+with col2:
+    if st.button("🚀 Launch the LDT Decision Engine", use_container_width=True, key="launch_from_resources"):
+        st.switch_page("gpbp-ldt-de.py")
+        
+st.markdown("<hr style='border: 1px solid #ddd; margin: 2rem 0;'>", unsafe_allow_html=True)
+
+
+# Footer Section
+st.markdown('<div class="columns-section">', unsafe_allow_html=True)
+st.markdown("""
+    <div class="footer-section">
+        <div class="footer-text">
+            Implemented by
+        </div>
+    </div>
+""", unsafe_allow_html=True)
 
 # Organization Logos
 col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 1])
