@@ -32,21 +32,14 @@ storage_client = init_gcs_client()
 pimpam_logo = get_image_from_gcs(storage_client, BUCKET_NAME, "decision_engine/inputs/wbg-pimpam.png")
 gpbp_logo = get_image_from_gcs(storage_client, BUCKET_NAME, "decision_engine/inputs/GPBP logo.jpg")
 
-st.sidebar.image(pimpam_logo, use_container_width=True)
 st.logo(gpbp_logo, size='large')
+st.sidebar.image(pimpam_logo, use_container_width=True)
 
-pages = {
-    # "Home": [st.Page("home.py", title="Home")],
-    
-    "GPBP-LDT-DE": [
-        st.Page("gpbp-ldt-de.py", title="Launch the app"),
-        # st.Page("gpbp-pia.py", title="Public Infrastructure Access Tool (PIA)"),
-    ],
-    "Resources": [
-        st.Page("about.py", title="About"),
-        # st.Page("methodology.py", title="Methodology"),
-    ],
-}
+home_page = st.Page("home.py", title="Home")
 
-pg = st.navigation(pages)
+gpbp_ldt_de_page = st.Page("gpbp-ldt-de.py", title="Launch the app")
+about_page = st.Page("about.py", title="About")
+methodology_page = st.Page("methodology.py", title="Methodology")
+
+pg = st.navigation([home_page, about_page, methodology_page, gpbp_ldt_de_page])
 pg.run()
