@@ -35,7 +35,6 @@ from src.ui import (
 from src.analysis import (
     get_indicator_analysis, prepare_regional_analysis_data, 
     filter_projects, get_indicator_series,
-    calculate_spatial_autocorrelation, classify_spatial_clusters,
     prepare_3d_scatter_data, prepare_scatter_data, prepare_choropleth_data,
     find_municipality_match
 )
