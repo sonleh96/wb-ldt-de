@@ -267,29 +267,6 @@ with scatterplot:
     
     st.plotly_chart(fig_3d, use_container_width=True)
     
-    st.text("")
-    st.text("")
-    st.text("")
-    
-    
-    # Score Driver
-    st.header("Score Driver Composition")
-    render_waterfall_chart_options(["Prosperity Score", "Infrastructure Score", "Livability Score"], "main")
-    score_name = st.session_state.option_score_name_waterfall
-    fig_waterfall = create_waterfall_chart(df_score, "main")
-    if fig_waterfall:
-        st.plotly_chart(fig_waterfall, use_container_width=True)
-        
-    # Subscore Driver
-    st.header("Sub-Score Driver Composition")
-    render_waterfall_chart_options(["Energy Access Score", "Digitalization Score", "Sustainable Transport Score", "Education Score", "Health Score", "Environment Score"], 
-                                   "sub")
-    sub_score_name = st.session_state.option_subscore_name_waterfall
-    fig_waterfall_sub = create_waterfall_chart(df_score, "sub")
-    if fig_waterfall_sub:
-        st.plotly_chart(fig_waterfall_sub, use_container_width=True)
-
-        
         
 with choropleth:
     st.header("🗺️ Spatial Mapping")
@@ -354,8 +331,33 @@ with choropleth:
     
     st.text("")
     st.text("")
-    st.text("")
-    st.text("")
+    
+    # Score Driver
+    st.subheader("Score Driver Composition")
+    st.write("\
+             This waterfall chart shows the drivers of the Prosperity Score, Infrastructure Score, Livability Score\
+             The drivers demonstrate how each component contributes to the overall score. \
+             Please adjust the score using the dropdown menu below.\
+             ")
+    render_waterfall_chart_options(["Prosperity Score", "Infrastructure Score", "Livability Score"], "main")
+    score_name = st.session_state.option_score_name_waterfall
+    fig_waterfall = create_waterfall_chart(df_score, "main")
+    if fig_waterfall:
+        st.plotly_chart(fig_waterfall, use_container_width=True)
+        
+    # Subscore Driver
+    st.subheader("Sub-Score Driver Composition")
+    st.write("\
+             This waterfall chart shows the drivers of the subscores in the Energy Access, Digitalization, Sustainable Transport, Education, Health, and Environment Deomains. \
+             The drivers demonstrate how each component contributes to the overall score. \
+             Please adjust the subscore using the dropdown menu below. \
+             ")
+    render_waterfall_chart_options(["Energy Access Score", "Digitalization Score", "Sustainable Transport Score", "Education Score", "Health Score", "Environment Score"], 
+                                   "sub")
+    sub_score_name = st.session_state.option_subscore_name_waterfall
+    fig_waterfall_sub = create_waterfall_chart(df_score, "sub")
+    if fig_waterfall_sub:
+        st.plotly_chart(fig_waterfall_sub, use_container_width=True)
     
     # # Spatial autocorrelation analysis
     # with st.expander("See Spatial Autocorrelation Analysis"):
