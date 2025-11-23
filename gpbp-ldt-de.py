@@ -269,7 +269,16 @@ with scatterplot:
     
         
 with choropleth:
-    st.header("🗺️ Spatial Mapping")
+    st.header("🗺️ Single Variable Analysis")
+    st.write("This section allows you to analyze individual scores and indicators for each municipality in Serbia. \
+             First, you can highlight a municipality to compare its development status with the other municipalities.  \
+             Then, you can select the year and the indicator or score you want to analyze on the map. \
+             After, the map will show the relationship between the indicator and the score. \
+             Finally, the waterfall chart can help you understand the drivers of the score and their subdomains. \
+             Let's start by highlighting a municipality.")
+    
+    st.write("")
+    
     
     # Prepare data
     df_choropleth = gdf_score_geom.drop(['population_total'], axis=1)
@@ -304,6 +313,15 @@ with choropleth:
     
     # Create choropleth map
     labels = get_choropleth_labels(indicator)
+    
+    st.subheader("Choropleth Plot")
+    st.write("\
+             This map plot shows the spatial distribution of the chosen score or indicator for each municipality in Serbia, filtered by year. \
+             Please adjust the year and the indicator or score using the dropdown menus below. \
+             The highlighted municipality and others belonging in the same district will be highlighted on the map. \
+             You can hover over the map to see the value of the score or indicator for each municipality. \
+             The colorbar,on the right, shows the range of values, scaled between 0 and 100, for the chosen score or indicator. \
+             ")
     fig = create_choropleth_map(slice_choropleth, geojson_data, indicator, labels, year)
     
     # Highlight municipality if match found
