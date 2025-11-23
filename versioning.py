@@ -1,13 +1,6 @@
 import streamlit as st
 from datetime import datetime
 
-# --- Page Configuration ---
-st.set_page_config(
-    page_title="Release Notes - LDT Decision Engine",
-    page_icon="📝",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
 
 # --- Custom CSS for styling ---
 st.markdown("""
