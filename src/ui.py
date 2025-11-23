@@ -16,15 +16,15 @@ from src.caching import ResponseCacheManager
 
 
 def fix_appearance():
-    # JS script to detect system theme
+    # JS script to force light theme
     detect_theme_js = """
     <script>
-    const theme = window.matchMedia("(prefers-color-scheme: light)").matches
-                ? "dark" : "light";
+    // Always use light theme regardless of system setting
+    const theme = "light";
 
     // send result to Streamlit
     window.parent.postMessage(
-        {isDarkMode: theme === "light"},
+        {isDarkMode: false},
         "*"
     );
     </script>
