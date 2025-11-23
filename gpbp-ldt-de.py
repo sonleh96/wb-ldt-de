@@ -134,14 +134,22 @@ gpbp_logo = get_image_from_gcs(storage_client, BUCKET_NAME, "decision_engine/inp
 
 
 scatterplot, choropleth, decision_engine = st.tabs([
-    "📊 Scatter Plot", 
-    "🗺️ Choropleth", 
+    "📊 Multi-Variable Analysis", 
+    "🗺️ Single Variable Analysis", 
     "🤖 Decision Engine"])
     
 
 with scatterplot:
-    st.header("📊 Scatterplot")
-    st.write("This is a scatterplot of Serbia.")
+    st.header("📊 Multi-Variable Analysis")
+    # Explain the purpose of this section
+    st.write("This section allows you to analyze the relationship between the Prosperity Score, Infrastructure Score, and Livability Score for each municipality in Serbia. \
+             First, you can highlight a municipality to compare its development status with the other municipalities.  \
+             Then, you can select the year and the indicators you want to analyze on 2D scatterplot. \
+             After, the 3D scatterplot will visualize all three scores, giving you a complete view of the development status of each municipality. \
+             Finally, the watercfall charts can help you understand the drivers of the scores and their subdomains.  \
+             Let's start by highlighting a municipality.")
+    
+    st.write("")
     
     # Prepare data
     df_scatter = pd.DataFrame(gdf_score_geom.drop(['population_total'], axis=1))
@@ -158,6 +166,17 @@ with scatterplot:
     # Store in session state for sharing between tabs
     if highlight_txt:
         st.session_state.highlight_municipality = highlight_txt
+    
+    st.subheader("2D Scatterplot")
+    st.write("\
+             This scatterplot shows the relationship between two chosen scores for each municipality in Serbia, filtered by year. \
+             Please adjust the year and the indicators using the dropdown menus below. \
+             The highlighted municipality and others belonging in the same district will be highlighted in the plot. \
+             ")
+    st.write("The quadrant shading indicates the relative performance of the municipalities in the two chosen scores. \
+             The top-right quadrant (green) is the best performing municipalities, the top-left quadrant (yellow) is the best performing municipalities in the  score on the y-axis, \
+             the bottom-right quadrant (yellow) is the best performing municipalities in the first chosen score on the x-axis, and the bottom-left quadrant (red) is the least performing municipalities in the two chosen scores. \
+             ")
     
     
     # 2D Scatterplot
@@ -217,6 +236,13 @@ with scatterplot:
     
     
     # 3D Scatterplot
+    st.subheader("3D Scatterplot")
+    st.write("\
+             This scatterplot shows the Prosperity Score, Infrastructure Score, and Livability Score for each municipality in Serbia, filtered by year. \
+             Please adjust the year using the dropdown menu below. \
+             The highlighted municipality and others belonging in the same district will be highlighted, in red and orange colors respectively, on the plot for better visualization. \
+             ")
+    
     render_3d_scatterplot_options(df_scatter['year'].unique().tolist())
     year = st.session_state.option_year_3d_scatterplot
     slice_3d = prepare_3d_scatter_data(df_scatter, year)
