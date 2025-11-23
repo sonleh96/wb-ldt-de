@@ -173,14 +173,14 @@ st.markdown("<hr style='border: 1px solid #ddd; margin: 2rem 0;'>", unsafe_allow
 # Resource 1: Pitch Deck
 st.markdown("""
 <div class="resource-box">
-    <div class="resource-title">📊 LDT Decision Engine Pitch Deck</div>
+    <div class="resource-title">📊 LDT Decision Engine Presentation for Serbia</div>
     <div class="resource-description">
         A comprehensive presentation introducing the Local Development Tracker Decision Engine, its objectives, 
         and value proposition. This deck provides an overview of the tool's capabilities, target users, 
-        and expected impact on regional development planning in Serbia. Ideal for stakeholders seeking 
+        and expected impact on regional development planning in Serbia. A deep-dive into Veliko Gradište is also available. Ideal for stakeholders seeking 
         a high-level understanding of the platform and its role in the broader GPBP ecosystem.
     </div>
-    <a href="https://docs.google.com/presentation/d/19iGMTUGeB7LNRGnFxKTYuRexLW0OjAmn/edit?slide=id.g2e47b9337ae_0_98#slide=id.g2e47b9337ae_0_98" 
+    <a href="https://docs.google.com/presentation/d/1mI5tvSvkijnJuQU4ehGIUlHFUiNefTcA/edit?usp=sharing&ouid=107640506223612923418&rtpof=true&sd=true" 
        target="_blank" class="resource-link">→ View Pitch Deck</a>
 </div>
 """, unsafe_allow_html=True)
