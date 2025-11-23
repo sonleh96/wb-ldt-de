@@ -350,9 +350,8 @@ with choropleth:
     year = st.session_state.option_year
     indicator = st.session_state.option_indicator
     
-    # Prepare choropleth data and calculate spatial autocorrelation
+    # Prepare choropleth data 
     slice_choropleth, geojson_data = prepare_choropleth_data(df_choropleth, indicator, year)
-    # global_mi, local_mi, global_significance, region_local_significance = calculate_spatial_autocorrelation(slice_choropleth, indicator)
     
     # Create choropleth map
     labels = get_choropleth_labels(indicator)
@@ -419,21 +418,6 @@ with choropleth:
     fig_waterfall_sub = create_waterfall_chart(df_score, "sub")
     if fig_waterfall_sub:
         st.plotly_chart(fig_waterfall_sub, use_container_width=True)
-    
-    # # Spatial autocorrelation analysis
-    # with st.expander("See Spatial Autocorrelation Analysis"):
-    #     render_choropleth_text()
-        
-    #     # Classify clusters
-    #     labels = classify_spatial_clusters(local_mi)
-    #     slice_choropleth["cl"] = labels
-        
-    #     # Create GeoJSON for spatial map
-    #     geojson_data_spatial = json.loads(slice_choropleth.to_json())
-        
-    #     # Create spatial autocorrelation map
-    #     fig_li = create_spatial_autocorr_map(slice_choropleth, geojson_data_spatial, indicator, year)
-    #     st.plotly_chart(fig_li, use_container_width=True)
 
 
 with decision_engine:

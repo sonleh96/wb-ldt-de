@@ -3,10 +3,8 @@ import pandas as pd
 import streamlit as st
 import numpy as np
 import difflib
-import esda
-import libpysal as lps
 
-from src.config import CATEGORY_INDICATOR_DICT, INDICATOR_HIGHER_IS_BETTER, SPATIAL_AUTOCORR_LABELS
+from src.config import CATEGORY_INDICATOR_DICT, INDICATOR_HIGHER_IS_BETTER
 from src.ui import normalize
 
 @st.cache_data
@@ -176,53 +174,6 @@ def calculate_indicator_score(indicator: str, df_indicators: pd.DataFrame) -> fl
         return np.round(df_indicators[indicator].rank(pct=True) * 100, 2)
     else:
         return np.round(100 - df_indicators[indicator].rank(pct=True) * 100, 2)
-
-
-def calculate_spatial_autocorrelation(slice_choropleth: pd.DataFrame, indicator: str) -> Tuple:
-    """
-    Calculate global and local Moran's I for spatial autocorrelation.
-    
-    Args:
-        slice_choropleth: GeoDataFrame with spatial data
-        indicator: Name of the indicator column
-        
-    Returns:
-        Tuple of (global_mi, local_mi, global_significance, region_local_significance)
-    """
-    wq = lps.weights.Queen.from_dataframe(slice_choropleth, use_index=False, silence_warnings=True)
-    wq.transform = "r"
-    y = slice_choropleth[indicator]
-    
-    np.random.seed(12345)
-    global_mi = esda.moran.Moran(y, wq)
-    global_significance = 'Significant' if global_mi.p_sim < 0.05 else 'Not Significant'
-    
-    local_mi = esda.moran.Moran_Local(y, wq)
-    region_local_significance = f'{((local_mi.p_sim < 0.05).sum() / len(slice_choropleth)) * 100:.1f}'
-    
-    return global_mi, local_mi, global_significance, region_local_significance
-
-
-def classify_spatial_clusters(local_mi) -> List[str]:
-    """
-    Classify municipalities into spatial clusters (HH, LL, HL, LH, Not Significant).
-    
-    Args:
-        local_mi: Local Moran's I result object
-        
-    Returns:
-        List of cluster labels for each municipality
-    """
-    np.random.seed(12345)
-    sig = 1 * (local_mi.p_sim < 0.05)
-    hh = 1 * (sig * local_mi.q == 1)
-    ll = 2 * (sig * local_mi.q == 2)
-    hl = 3 * (sig * local_mi.q == 3)
-    lh = 4 * (sig * local_mi.q == 4)
-    spots = hh + ll + hl + lh
-    
-    labels = [SPATIAL_AUTOCORR_LABELS[i] for i in spots]
-    return labels
 
 
 def prepare_3d_scatter_data(df_scatter: pd.DataFrame, year: int) -> pd.DataFrame:
