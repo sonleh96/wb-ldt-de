@@ -658,29 +658,32 @@ def create_2d_scatter_with_quadrants(slice_scatter, x_score_name, y_score_name,
 def highlight_municipality_2d(fig, sel, x_score_name, y_score_name, indicator_x, indicator_y, name,
                               x_is_score=False, y_is_score=False):
     """
-    Add highlighted municipality to 2D scatter plot.
+    Add highlighted municipality and other municipalities in the same district to 2D scatter plot.
     
     Args:
         fig: Existing plotly figure
-        sel: DataFrame slice for selected municipality
+        sel: DataFrame slice for all municipalities in the district
         x_score_name: X-axis score name
         y_score_name: Y-axis score name
         indicator_x: X-axis indicator name
         indicator_y: Y-axis indicator name
-        name: Municipality name
+        name: Municipality name to highlight
         x_is_score: If True, indicator_x is already a score
         y_is_score: If True, indicator_y is already a score
         
     Returns:
         Modified figure
     """
+    # Split into selected municipality and others in the same district
+    sel_muni = sel[sel["ENGLISH_NAME"] == name]
+    sel_else = sel[sel["ENGLISH_NAME"] != name]
+    district_name = sel_muni["NAME_1"].reset_index(drop=True).iloc[0]
+    
     # Build custom_data columns avoiding duplicates
     custom_data_cols = ['ENGLISH_NAME']
     for col in [x_score_name, y_score_name, indicator_x, indicator_y]:
         if col not in custom_data_cols:
             custom_data_cols.append(col)
-    
-    customdata_df = sel[custom_data_cols]
     
     # Build hover template dynamically
     hover_parts = [f"<b>%{{customdata[0]}}</b>"]  # ENGLISH_NAME is always first
@@ -706,12 +709,14 @@ def highlight_municipality_2d(fig, sel, x_score_name, y_score_name, indicator_x,
     
     hovertemplate = "<br>".join(hover_parts) + "<extra></extra>"
     
+    # Add trace for the highlighted municipality (crimson)
+    customdata_muni = sel_muni[custom_data_cols]
     fig.add_trace(
         go.Scatter(
-            x=sel[x_score_name],
-            y=sel[y_score_name],
+            x=sel_muni[x_score_name],
+            y=sel_muni[y_score_name],
             mode="markers+text",
-            text=sel["ENGLISH_NAME"],
+            text=sel_muni["ENGLISH_NAME"],
             textposition="top center",
             name=f"Highlighted: {name}",
             marker=dict(
@@ -720,11 +725,33 @@ def highlight_municipality_2d(fig, sel, x_score_name, y_score_name, indicator_x,
                 line=dict(width=2, color="white"),
                 color="crimson"
             ),
-            customdata=customdata_df,
+            customdata=customdata_muni,
             hovertemplate=hovertemplate,
             showlegend=True
         )
     )
+    
+    # Add trace for other municipalities in the same district (orange)
+    if not sel_else.empty:
+        customdata_else = sel_else[custom_data_cols]
+        fig.add_trace(
+            go.Scatter(
+                x=sel_else[x_score_name],
+                y=sel_else[y_score_name],
+                mode="markers",
+                name=f"Other Municipalities in {district_name}",
+                marker=dict(
+                    symbol="circle",
+                    size=15,
+                    line=dict(width=2, color="white"),
+                    color="orange"
+                ),
+                customdata=customdata_else,
+                hovertemplate=hovertemplate,
+                showlegend=True
+            )
+        )
+    
     return fig
 
 

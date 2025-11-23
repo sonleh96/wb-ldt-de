@@ -261,7 +261,7 @@ def prepare_scatter_data(df_scatter: pd.DataFrame, indicator_x: str, indicator_y
     Returns:
         DataFrame with calculated scores
     """
-    slice_scatter = df_scatter[['ENGLISH_NAME', 'year', indicator_x, indicator_y]]
+    slice_scatter = df_scatter[['ENGLISH_NAME', 'NAME_1', 'year', indicator_x, indicator_y]]
     slice_scatter = slice_scatter[slice_scatter['year'] == year]
     
     # Only calculate scores if the indicator is not already a score column
