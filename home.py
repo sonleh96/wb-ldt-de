@@ -302,7 +302,7 @@ st.markdown("""
 
 # Banner Image - Full Width
 st.markdown('<div class="banner-container">', unsafe_allow_html=True)
-st.image("data/banner_long.png", use_container_width=True)
+st.image("images/banner_long.png", use_container_width=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
 # Start content wrapper for padding
@@ -421,13 +421,13 @@ with col1:
     st.write("")
     
 with col2:
-    st.image("data/wbg logo.png")
+    st.image("images/wbg logo.png")
 
 with col3:
-    st.image("data/VDKC-Logo-Color.jpg")
+    st.image("images/VDKC-Logo-Color.jpg")
     
 with col4:
-    st.image("data/ASG_Logo.png")
+    st.image("images/ASG_Logo.png")
     
 with col5:
     st.write("")

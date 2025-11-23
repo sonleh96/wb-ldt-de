@@ -191,7 +191,7 @@ Indicators were selected based on:
 Indicators span three key pillars: **Prosperity**, **Livability**, and **Infrastructure**. Each pillar is composed of key development domains defined by the WBIF.
 """)
 
-st.image("data/Indicators Map.png", use_container_width=True)
+st.image("images/Indicators Map.png", use_container_width=True)
 
 st.markdown("### Development Domains")
 
@@ -275,7 +275,7 @@ st.markdown("<hr style='border: 1px solid #ddd; margin: 2rem 0;'>", unsafe_allow
 # AI Integration
 st.markdown("## AI-Powered Analysis")
 
-st.image("data/methodology image 2.webp", use_container_width=True)
+st.image("images/methodology image 2.webp", use_container_width=True)
 
 st.markdown("""
 The LDT-DE leverages Large Language Models (LLMs) to enhance data analysis and interpretation:
@@ -382,13 +382,13 @@ with col1:
     st.write("")
     
 with col2:
-    st.image("data/wbg logo.png")
+    st.image("images/wbg logo.png")
 
 with col3:
-    st.image("data/VDKC-Logo-Color.jpg")
+    st.image("images/VDKC-Logo-Color.jpg")
     
 with col4:
-    st.image("data/ASG_Logo.png")
+    st.image("images/ASG_Logo.png")
     
 with col5:
     st.write("")

@@ -147,11 +147,6 @@ with scatterplot:
     df_scatter = pd.DataFrame(gdf_score_geom.drop(['population_total'], axis=1))
     name_lookup = {normalize(s): s for s in df_scatter["ENGLISH_NAME"].unique()}
     
-    # 3D Scatterplot
-    render_3d_scatterplot_options(df_scatter['year'].unique().tolist())
-    year = st.session_state.option_year_3d_scatterplot
-    slice_3d = prepare_3d_scatter_data(df_scatter, year)
-    
     # Text input box
     highlight_txt = st.text_input(
         "🔎 Highlight a municipality (you can type partial or accent-free name, e.g., sabac or Nis):",
@@ -163,6 +158,68 @@ with scatterplot:
     # Store in session state for sharing between tabs
     if highlight_txt:
         st.session_state.highlight_municipality = highlight_txt
+    
+    
+    # 2D Scatterplot
+    # with st.expander("View 2D Scatterplot Options"):
+    X_OPTIONS = ['Livability Score', 'Infrastructure Score', 'Prosperity Score']
+    Y_OPTIONS = ['Prosperity Score', 'Infrastructure Score', 'Livabilitiy Score']
+    render_scatterplot_options(df_scatter['year'].unique().tolist(), X_OPTIONS, Y_OPTIONS)
+    
+    year = st.session_state.option_year_scatterplot
+    indicator_x = st.session_state.option_indicator_x
+    indicator_y = st.session_state.option_indicator_y
+    
+    # Check if indicators are already scores (contain "Score" substring)
+    x_is_score = "Score" in indicator_x
+    y_is_score = "Score" in indicator_y
+    
+    # If indicator is already a score, use it as is; otherwise remove unit suffix for score name
+    x_score_name = indicator_x if x_is_score else remove_unit_suffix(indicator_x)
+    y_score_name = indicator_y if y_is_score else remove_unit_suffix(indicator_y)
+        
+    # Prepare data
+    slice_scatter = prepare_scatter_data(df_scatter, indicator_x, indicator_y, year, 
+                                         x_score_name, y_score_name, x_is_score, y_is_score)
+    
+    # Build custom_data - avoid duplicate columns
+    # Structure: [ENGLISH_NAME, x_score, y_score, indicator_x_val, indicator_y_val]
+    # Use a list to preserve order but avoid duplicates
+    custom_data_cols = ['ENGLISH_NAME']
+    for col in [x_score_name, y_score_name, indicator_x, indicator_y]:
+        if col not in custom_data_cols:
+            custom_data_cols.append(col)
+    
+    custom_data = slice_scatter[custom_data_cols]
+        
+    # Create 2D scatter with quadrants
+    fig = create_2d_scatter_with_quadrants(slice_scatter, x_score_name, y_score_name, 
+                                                indicator_x, indicator_y, year, custom_data, 
+                                                x_is_score, y_is_score)
+        
+    # Highlight municipality if match found
+    if highlight_txt.strip():
+        matches = find_municipality_match(highlight_txt, name_lookup)
+
+        if len(matches) == 1:
+            name = matches[0]
+            sel = slice_scatter[slice_scatter["ENGLISH_NAME"] == name]
+            fig = highlight_municipality_2d(fig, sel, x_score_name, y_score_name, 
+                                                indicator_x, indicator_y, name, 
+                                                x_is_score, y_is_score)
+            st.success(f"✅ Highlighted: **{name}**")
+        elif len(matches) > 1:
+            st.info(f"Found multiple matches: {', '.join(matches[:5])}...")
+        else:
+            st.warning("No match found. Try typing part of the name or removing accents.")
+
+    st.plotly_chart(fig, use_container_width=True)
+    
+    
+    # 3D Scatterplot
+    render_3d_scatterplot_options(df_scatter['year'].unique().tolist())
+    year = st.session_state.option_year_3d_scatterplot
+    slice_3d = prepare_3d_scatter_data(df_scatter, year)
     
     # Create 3D scatter plot
     fig_3d = create_3d_scatter(slice_3d)
@@ -205,43 +262,7 @@ with scatterplot:
     fig_waterfall_sub = create_waterfall_chart(df_score, "sub")
     if fig_waterfall_sub:
         st.plotly_chart(fig_waterfall_sub, use_container_width=True)
-    
-    # 2D Scatterplot
-    # with st.expander("View 2D Scatterplot Options"):
-    #     render_scatterplot_options(df_scatter['year'].unique().tolist(), LIVABILITY_INDICATORS, PROSPERITY_INDICATORS)
-    
-    #     year = st.session_state.option_year_scatterplot
-    #     indicator_x = st.session_state.option_indicator_x
-    #     indicator_y = st.session_state.option_indicator_y
-        
-    #     x_score_name = remove_unit_suffix(indicator_x)
-    #     y_score_name = remove_unit_suffix(indicator_y)
-        
-    #     # Prepare data
-    #     slice_scatter = prepare_scatter_data(df_scatter, indicator_x, indicator_y, year, x_score_name, y_score_name)
-        
-    #     custom_data = slice_scatter[['ENGLISH_NAME', x_score_name, y_score_name, indicator_x, indicator_y]]
-        
-    #     # Create 2D scatter with quadrants
-    #     fig = create_2d_scatter_with_quadrants(slice_scatter, x_score_name, y_score_name, 
-    #                                             indicator_x, indicator_y, year, custom_data)
-        
-    #     # Highlight municipality if match found
-    #     if highlight_txt.strip():
-    #         matches = find_municipality_match(highlight_txt, name_lookup)
 
-    #         if len(matches) == 1:
-    #             name = matches[0]
-    #             sel = slice_scatter[slice_scatter["ENGLISH_NAME"] == name]
-    #             fig = highlight_municipality_2d(fig, sel, x_score_name, y_score_name, 
-    #                                             indicator_x, indicator_y, name)
-    #             st.success(f"✅ Highlighted: **{name}**")
-    #         elif len(matches) > 1:
-    #             st.info(f"Found multiple matches: {', '.join(matches[:5])}...")
-    #         else:
-    #             st.warning("No match found. Try typing part of the name or removing accents.")
-
-    #     st.plotly_chart(fig, use_container_width=True)
         
         
 with choropleth:

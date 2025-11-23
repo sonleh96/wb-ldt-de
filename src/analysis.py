@@ -243,7 +243,8 @@ def prepare_3d_scatter_data(df_scatter: pd.DataFrame, year: int) -> pd.DataFrame
 
 
 def prepare_scatter_data(df_scatter: pd.DataFrame, indicator_x: str, indicator_y: str, 
-                         year: int, x_score_name: str, y_score_name: str) -> pd.DataFrame:
+                         year: int, x_score_name: str, y_score_name: str,
+                         x_is_score: bool = False, y_is_score: bool = False) -> pd.DataFrame:
     """
     Prepare data for 2D scatterplot with score calculations.
     
@@ -254,6 +255,8 @@ def prepare_scatter_data(df_scatter: pd.DataFrame, indicator_x: str, indicator_y
         year: Year to filter
         x_score_name: Name for X score column
         y_score_name: Name for Y score column
+        x_is_score: If True, indicator_x is already a score (don't calculate)
+        y_is_score: If True, indicator_y is already a score (don't calculate)
         
     Returns:
         DataFrame with calculated scores
@@ -261,8 +264,11 @@ def prepare_scatter_data(df_scatter: pd.DataFrame, indicator_x: str, indicator_y
     slice_scatter = df_scatter[['ENGLISH_NAME', 'year', indicator_x, indicator_y]]
     slice_scatter = slice_scatter[slice_scatter['year'] == year]
     
-    slice_scatter[x_score_name] = calculate_indicator_score(indicator_x, df_scatter)
-    slice_scatter[y_score_name] = calculate_indicator_score(indicator_y, df_scatter)
+    # Only calculate scores if the indicator is not already a score column
+    if not x_is_score:
+        slice_scatter[x_score_name] = calculate_indicator_score(indicator_x, df_scatter)
+    if not y_is_score:
+        slice_scatter[y_score_name] = calculate_indicator_score(indicator_y, df_scatter)
     
     return slice_scatter
 

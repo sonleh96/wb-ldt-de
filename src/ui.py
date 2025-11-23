@@ -169,16 +169,16 @@ def render_scatterplot_options(years: list, indicators_x: list, indicators_y: li
     )
     
     indicator_x = st.selectbox(
-        "Livability Indicator",
+        "X-axis Indicator",
         indicators_x,
-        index=indicators_x.index("PM 2.5 concentration (unit: µg/m3)"),
+        index=indicators_x.index("Livability Score"),
         key="option_indicator_x"
     )
     
     indicator_y = st.selectbox(
-        "Prosperity Indicator",
+        "Y-axis Indicator",
         indicators_y,
-        index=indicators_y.index('Nighttime Luminosity (unit: nWatts/(cm2 x sr)'),
+        index=indicators_y.index('Prosperity Score'),
         key="option_indicator_y"
     )
     
@@ -523,7 +523,8 @@ def create_waterfall_chart(slice_waterfall, score_type="main"):
 
 
 def create_2d_scatter_with_quadrants(slice_scatter, x_score_name, y_score_name, 
-                                      indicator_x, indicator_y, year, custom_data):
+                                      indicator_x, indicator_y, year, custom_data,
+                                      x_is_score=False, y_is_score=False):
     """
     Create 2D scatter plot with quadrant shading and labels.
     
@@ -535,6 +536,8 @@ def create_2d_scatter_with_quadrants(slice_scatter, x_score_name, y_score_name,
         indicator_y: Y-axis indicator full name
         year: Year for title
         custom_data: Custom data for hover
+        x_is_score: If True, indicator_x is already a score
+        y_is_score: If True, indicator_y is already a score
         
     Returns:
         plotly figure
@@ -583,36 +586,60 @@ def create_2d_scatter_with_quadrants(slice_scatter, x_score_name, y_score_name,
                 fillcolor=QUADRANT_COLORS["low_low"], opacity=0.10, line_width=0, layer="below")
     
     # Add quadrant labels
-    fig.add_annotation(x=(x_mid + x_max)/2, y=(y_mid + y_max)/2,
-                    text="High Prosperity and Livability", showarrow=False, font=dict(size=20, color="green"))
-    fig.add_annotation(x=(x_min + x_mid)/2, y=(y_mid + y_max)/2,
-                    text="High Prosperity, Low Livability", showarrow=False, font=dict(size=20, color="#a67c00"))
-    fig.add_annotation(x=(x_mid + x_max)/2, y=(y_min + y_mid)/2,
-                    text="Low Prosperity, High Livability", showarrow=False, font=dict(size=20, color="#a67c00"))
-    fig.add_annotation(x=(x_min + x_mid)/2, y=(y_min + y_mid)/2,
-                    text="Low Prosperity and Livability", showarrow=False, font=dict(size=20, color="red"))
+    # fig.add_annotation(x=(x_mid + x_max)/2, y=(y_mid + y_max)/2,
+    #                 text="High Prosperity and Livability", showarrow=False, font=dict(size=20, color="green"))
+    # fig.add_annotation(x=(x_min + x_mid)/2, y=(y_mid + y_max)/2,
+    #                 text="High Prosperity, Low Livability", showarrow=False, font=dict(size=20, color="#a67c00"))
+    # fig.add_annotation(x=(x_mid + x_max)/2, y=(y_min + y_mid)/2,
+    #                 text="Low Prosperity, High Livability", showarrow=False, font=dict(size=20, color="#a67c00"))
+    # fig.add_annotation(x=(x_min + x_mid)/2, y=(y_min + y_mid)/2,
+    #                 text="Low Prosperity and Livability", showarrow=False, font=dict(size=20, color="red"))
 
     # Add crosshair lines
     fig.add_vline(x=x_mid, line_width=2, line_dash="dash", line_color="black")
     fig.add_hline(y=y_mid, line_width=2, line_dash="dash", line_color="black")
 
+    # Build hover template dynamically based on custom_data columns
+    # custom_data columns are in the order they were added (deduplicated)
+    custom_data_cols = list(custom_data.columns)
+    hover_parts = [f"<b>%{{customdata[0]}}</b>"]  # ENGLISH_NAME is always first
+    
+    # Find indices for each piece of data we want to show
+    x_score_idx = custom_data_cols.index(x_score_name) if x_score_name in custom_data_cols else None
+    if x_score_idx is not None:
+        hover_parts.append(f"{x_score_name}: %{{customdata[{x_score_idx}]:.2f}}")
+        
+    y_score_idx = custom_data_cols.index(y_score_name) if y_score_name in custom_data_cols else None
+    if y_score_idx is not None:
+        hover_parts.append(f"{y_score_name}: %{{customdata[{y_score_idx}]:.2f}}")
+    
+    # Only show indicator values if they're different from scores
+    if not x_is_score:
+        indicator_x_idx = custom_data_cols.index(indicator_x) if indicator_x in custom_data_cols else None
+        if indicator_x_idx is not None:
+            hover_parts.append(f"{indicator_x}: %{{customdata[{indicator_x_idx}]:.2f}}")
+    
+    if not y_is_score:
+        indicator_y_idx = custom_data_cols.index(indicator_y) if indicator_y in custom_data_cols else None
+        if indicator_y_idx is not None:
+            hover_parts.append(f"{indicator_y}: %{{customdata[{indicator_y_idx}]:.2f}}")
+    
+    hovertemplate = "<br>".join(hover_parts) + "<extra></extra>"
+    
     fig.update_traces(
-        hovertemplate=(
-            "<b>%{customdata[0]}</b><br>"
-            f"{x_score_name} Score: %{{customdata[1]:.0f}}<br>"
-            f"{y_score_name} Score: %{{customdata[2]:.0f}}<br>"
-            f"{indicator_x}: %{{customdata[3]:.2f}}<br>"
-            f"{indicator_y}: %{{customdata[4]:.2f}}"
-            "<extra></extra>"
-        ),
+        hovertemplate=hovertemplate,
         marker=dict(color='black')
     )
+    
+    # Format axis titles - don't add "Score" if it's already in the name
+    x_axis_title = x_score_name if "Score" in x_score_name else f'{x_score_name} Score'
+    y_axis_title = y_score_name if "Score" in y_score_name else f'{y_score_name} Score'
     
     fig.update_layout(
         title=dict(text=f"{y_score_name} vs {x_score_name} in Serbia, {year}",
                 font=dict(size=27), x=0.5, xanchor='center'),
-        xaxis_title=f'{x_score_name} Score',
-        yaxis_title=f'{y_score_name} Score',
+        xaxis_title=x_axis_title,
+        yaxis_title=y_axis_title,
         xaxis=dict(tickfont=dict(size=19), showline=True, linecolor="black", linewidth=2, ticks="outside", tickwidth=2, tickcolor="black"),
         yaxis=dict(tickfont=dict(size=19), showline=True, linecolor="black", linewidth=2, ticks="outside", tickwidth=2, tickcolor="black"),
         xaxis_title_font=dict(size=23),
@@ -628,7 +655,8 @@ def create_2d_scatter_with_quadrants(slice_scatter, x_score_name, y_score_name,
     return fig
 
 
-def highlight_municipality_2d(fig, sel, x_score_name, y_score_name, indicator_x, indicator_y, name):
+def highlight_municipality_2d(fig, sel, x_score_name, y_score_name, indicator_x, indicator_y, name,
+                              x_is_score=False, y_is_score=False):
     """
     Add highlighted municipality to 2D scatter plot.
     
@@ -640,10 +668,44 @@ def highlight_municipality_2d(fig, sel, x_score_name, y_score_name, indicator_x,
         indicator_x: X-axis indicator name
         indicator_y: Y-axis indicator name
         name: Municipality name
+        x_is_score: If True, indicator_x is already a score
+        y_is_score: If True, indicator_y is already a score
         
     Returns:
         Modified figure
     """
+    # Build custom_data columns avoiding duplicates
+    custom_data_cols = ['ENGLISH_NAME']
+    for col in [x_score_name, y_score_name, indicator_x, indicator_y]:
+        if col not in custom_data_cols:
+            custom_data_cols.append(col)
+    
+    customdata_df = sel[custom_data_cols]
+    
+    # Build hover template dynamically
+    hover_parts = [f"<b>%{{customdata[0]}}</b>"]  # ENGLISH_NAME is always first
+    
+    x_score_idx = custom_data_cols.index(x_score_name) if x_score_name in custom_data_cols else None
+    if x_score_idx is not None:
+        hover_parts.append(f"{x_score_name}: %{{customdata[{x_score_idx}]:.2f}}")
+        
+    y_score_idx = custom_data_cols.index(y_score_name) if y_score_name in custom_data_cols else None
+    if y_score_idx is not None:
+        hover_parts.append(f"{y_score_name}: %{{customdata[{y_score_idx}]:.2f}}")
+    
+    # Only show indicator values if they're different from scores
+    if not x_is_score:
+        indicator_x_idx = custom_data_cols.index(indicator_x) if indicator_x in custom_data_cols else None
+        if indicator_x_idx is not None:
+            hover_parts.append(f"{indicator_x}: %{{customdata[{indicator_x_idx}]:.2f}}")
+    
+    if not y_is_score:
+        indicator_y_idx = custom_data_cols.index(indicator_y) if indicator_y in custom_data_cols else None
+        if indicator_y_idx is not None:
+            hover_parts.append(f"{indicator_y}: %{{customdata[{indicator_y_idx}]:.2f}}")
+    
+    hovertemplate = "<br>".join(hover_parts) + "<extra></extra>"
+    
     fig.add_trace(
         go.Scatter(
             x=sel[x_score_name],
@@ -658,15 +720,8 @@ def highlight_municipality_2d(fig, sel, x_score_name, y_score_name, indicator_x,
                 line=dict(width=2, color="white"),
                 color="crimson"
             ),
-            customdata=sel[["ENGLISH_NAME", x_score_name, y_score_name, indicator_x, indicator_y]],
-            hovertemplate=(
-                "<b>%{customdata[0]}</b><br>"
-                f"{x_score_name} Score: %{{customdata[1]:.0f}}<br>"
-                f"{y_score_name} Score: %{{customdata[2]:.0f}}<br>"
-                f"{indicator_x}: %{{customdata[3]:.2f}}<br>"
-                f"{indicator_y}: %{{customdata[4]:.2f}}"
-                "<extra></extra>"
-            ),
+            customdata=customdata_df,
+            hovertemplate=hovertemplate,
             showlegend=True
         )
     )

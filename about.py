@@ -163,7 +163,7 @@ st.markdown("""
 
 # st.markdown("<hr style='border: 1px solid #ddd; margin: 2rem 0;'>", unsafe_allow_html=True)
 
-st.image("data/about image 1.jpg", use_container_width=True)
+st.image("images/about image 1.jpg", use_container_width=True)
 
 # Opening narrative with real-world context
 st.markdown("""
@@ -189,7 +189,7 @@ Comprising indicators across multiple development domains – from energy access
 
 """)
 
-st.image("data/About image 2.webp", use_container_width=True)
+st.image("images/About image 2.webp", use_container_width=True)
 
 st.markdown("""
 ## Making investments where they are needed most
@@ -275,13 +275,13 @@ with col1:
     st.write("")
     
 with col2:
-    st.image("data/wbg logo.png")
+    st.image("images/wbg logo.png")
 
 with col3:
-    st.image("data/VDKC-Logo-Color.jpg")
+    st.image("images/VDKC-Logo-Color.jpg")
     
 with col4:
-    st.image("data/ASG_Logo.png")
+    st.image("images/ASG_Logo.png")
     
 with col5:
     st.write("")
