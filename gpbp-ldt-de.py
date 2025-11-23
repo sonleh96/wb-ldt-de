@@ -43,13 +43,13 @@ from src.llm import (
     get_initial_recommendations, get_final_projects, get_project_review_document
 )
 
-# --- App Configuration ---
-st.set_page_config(
-    page_title="LDT Decision Engine",
-    page_icon="🌍",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# # --- App Configuration ---
+# st.set_page_config(
+#     page_title="LDT Decision Engine",
+#     page_icon="🌍",
+#     layout="wide",
+#     initial_sidebar_state="expanded"
+# )
 
 # --- State Management ---
 if 'stage' not in st.session_state:
