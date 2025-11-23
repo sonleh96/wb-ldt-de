@@ -26,10 +26,10 @@ from src.ui import (
     render_language_selection, render_main_interface, chart_latest_comparison_bar, 
     chart_trend_sparkline, render_delta_chip, spacer, render_transparency_badges, 
     render_sources_badges, render_map_options, render_scatterplot_options, 
-    remove_unit_suffix, render_choropleth_text, render_3d_scatterplot_options,
+    remove_unit_suffix, render_3d_scatterplot_options,
     create_3d_scatter, highlight_municipality_3d, create_2d_scatter_with_quadrants,
     highlight_municipality_2d, get_choropleth_labels, create_choropleth_map,
-    highlight_municipality_choropleth, create_spatial_autocorr_map, render_spatial_metrics, normalize,
+    highlight_municipality_choropleth, render_spatial_metrics, normalize,
     render_waterfall_chart_options, create_waterfall_chart
 )
 from src.analysis import (
@@ -175,13 +175,13 @@ def render_logout_button():
 
 
 scatterplot, choropleth, decision_engine = st.tabs([
-    "📊 Multi-Variable Analysis", 
-    "🗺️ Single Variable Analysis", 
+    "📊 Multi-Score Analysis", 
+    "🗺️ Single Score Analysis", 
     "🤖 Decision Engine"])
     
 
 with scatterplot:
-    st.header("📊 Multi-Variable Analysis")
+    st.header("📊 Multi-Score Analysis")
     # Explain the purpose of this section
     st.write("This section allows you to analyze the relationship between the Prosperity Score, Infrastructure Score, and Livability Score for each municipality in Serbia. \
              First, you can highlight a municipality to compare its development status with the other municipalities.  \
@@ -311,7 +311,7 @@ with scatterplot:
     
         
 with choropleth:
-    st.header("🗺️ Single Variable Analysis")
+    st.header("🗺️ Single Score Analysis")
     st.write("This section allows you to analyze individual scores and indicators for each municipality in Serbia. \
              First, you can highlight a municipality to compare its development status with the other municipalities.  \
              Then, you can select the year and the indicator or score you want to analyze on the map. \

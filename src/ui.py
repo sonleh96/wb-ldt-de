@@ -135,28 +135,7 @@ def render_map_options(years: list, indicators: list):
             key="option_indicator"
     )
     
-    return None
-
-def render_choropleth_text():
-    """Renders the choropleth text."""
-    
-    ### 🧭 Spatial Autocorrelation
-    st.markdown("""
-    <section>
-        <h3>🧭 Global Spatial Autocorrelation</h3>
-        <p><strong>Global Spatial Autocorrelation</strong> measures how similar or different a country's nearby regions are in terms of a certain value — like income, pollution, or internet speed. 
-        In simple terms, it checks whether “things close to each other tend to look alike.” 
-        For example, if prosperous regions are surrounded by other prosperous regions, or if polluted areas cluster together, then there’s <strong>positive spatial autocorrelation</strong>. On the other hand, if high and low values are scattered randomly, there’s little or no spatial autocorrelation.</p>
-        </section>
-
-    <section>
-        <h3>📍 Local Spatial Autocorrelation</h3>
-        <p><strong>Local Spatial Autocorrelation</strong> zooms in to see <em>where</em> those clusters or patterns are happening. Instead of giving one overall number for the whole country or region, it identifies specific <strong>hotspots</strong> (areas where high values group together), <strong>coldspots</strong> (areas of low values), or <strong>outliers</strong> (a high value surrounded by low ones, or vice versa). In other words, it’s like looking at a map through a magnifying glass to find which places stand out from their surroundings.</p>
-    </section>
-    
-    <br><br>
-    """, unsafe_allow_html=True)
-    
+    return None 
 
 def render_scatterplot_options(years: list, indicators_x: list, indicators_y: list):
     """Renders the scatterplot options, including year and indicator selection."""
