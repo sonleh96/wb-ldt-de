@@ -138,7 +138,7 @@ gpbp_logo = get_image_from_gcs(storage_client, BUCKET_NAME, "decision_engine/inp
 def render_login_form():
     """Render login form and handle authentication."""
     st.markdown("### 🔐 Login Required")
-    st.info("Please log in to access the Decision Engine. Please contact **kkaiser@worldbank.org** for approval or **sonle.h96@gmail.com** for the login credentials.")
+    st.info("Please log in to access the Decision Engine. Reach out to **kkaiser@worldbank.org** for approval and to **sonle.h96@gmail.com** for the login credentials.")
     
     with st.form("login_form"):
         username = st.text_input("Username")
