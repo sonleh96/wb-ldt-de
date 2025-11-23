@@ -19,12 +19,12 @@ def fix_appearance():
     # JS script to detect system theme
     detect_theme_js = """
     <script>
-    const theme = window.matchMedia("(prefers-color-scheme: dark)").matches
+    const theme = window.matchMedia("(prefers-color-scheme: light)").matches
                 ? "dark" : "light";
 
     // send result to Streamlit
     window.parent.postMessage(
-        {isDarkMode: theme === "dark"},
+        {isDarkMode: theme === "light"},
         "*"
     );
     </script>

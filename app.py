@@ -6,7 +6,15 @@ from src.config import BUCKET_NAME
 from src.gcs import get_image_from_gcs
 from src.ui import fix_appearance
 
-fix_appearance()
+# --- App Configuration ---
+st.set_page_config(
+    page_title="LDT Decision Engine",
+    page_icon="🌍",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# fix_appearance()
 
 # --- Initialization ---
 @st.cache_resource
