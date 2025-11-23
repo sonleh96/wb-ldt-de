@@ -41,6 +41,7 @@ gpbp_ldt_de_page = st.Page("gpbp-ldt-de.py", title="Launch the app")
 about_page = st.Page("about.py", title="About")
 methodology_page = st.Page("methodology.py", title="Methodology")
 resources_page = st.Page("resources.py", title="Resources")
+versioning_page = st.Page("versioning.py", title="Release Notes")
 
-pg = st.navigation([home_page, about_page, methodology_page, resources_page, gpbp_ldt_de_page])
+pg = st.navigation([home_page, about_page, methodology_page, resources_page, gpbp_ldt_de_page, versioning_page])
 pg.run()
