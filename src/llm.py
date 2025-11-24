@@ -68,6 +68,15 @@ def get_background_research(client: OpenAI, region: str, subcategory: str, df_de
     """
     
     dev_plan = df_dev_plan[(df_dev_plan['region'] == region) & (df_dev_plan['category'] == subcategory)].reset_index(drop=True)
+    if len(dev_plan) == 0:
+        current_situation = ""
+        key_challenges = ""
+        planned_measures_and_priorities = ""
+    else:
+        current_situation = dev_plan.loc[0, 'current situation']
+        key_challenges = dev_plan.loc[0, 'key challenges']
+        planned_measures_and_priorities = dev_plan.loc[0, 'planned measures and priorities']
+    
     
     research_system_message = """
         # Role
@@ -90,9 +99,9 @@ def get_background_research(client: OpenAI, region: str, subcategory: str, df_de
         - Cite the sources in the format with hyperlinks [Source: <source name>](<source URL>). Make sure the hyperlinks are working and clickable -> open in a new tab.
         - Incorporate and Prioritize the following additional context, if available. And also please cite them using the bolded text.
             - **Official Regional Development Plan for {region} municipality of Serbia**:
-                - Current situation: {dev_plan.loc[0, 'current situation']}
-                - Key challenges: {dev_plan.loc[0, 'key challenges']}
-                - Planned measures and priorities: **{dev_plan.loc[0, 'planned measures and priorities']}
+                - Current situation: {current_situation}
+                - Key challenges: {key_challenges}
+                - Planned measures and priorities: **{planned_measures_and_priorities}
             - **GPBP Country Benchmarking Dashboard (CBD)** with its source URL "https://cbd.pim-pam.net/":
                 {CBD_CONTEXT[subcategory]}
         - New information must not contradict the existing context (if available).

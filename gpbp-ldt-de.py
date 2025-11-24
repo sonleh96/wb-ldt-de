@@ -123,6 +123,7 @@ df_indicators = gdf_score_geom.drop(['NAME_1', 'GID_2', 'PM 10 concentration (un
                                          'Infrastructure Score', 'Livability Score', 'geometry'], axis=1)
 regions_en = df_indicators["ENGLISH_NAME"].unique().tolist()
 regions_sr = df_indicators["SERBIAN_NAME_CYRILLIC"].unique().tolist()
+print(df_indicators.columns)
 averages_df = df_indicators.groupby("year")[df_indicators.columns[3:]].mean().reset_index()
 
 
