@@ -123,7 +123,6 @@ df_indicators = gdf_score_geom.drop(['NAME_1', 'GID_2', 'PM 10 concentration (un
                                          'Infrastructure Score', 'Livability Score', 'geometry'], axis=1)
 regions_en = df_indicators["ENGLISH_NAME"].unique().tolist()
 regions_sr = df_indicators["SERBIAN_NAME_CYRILLIC"].unique().tolist()
-print(df_indicators.columns)
 averages_df = df_indicators.groupby("year")[df_indicators.columns[3:]].mean().reset_index()
 
 
@@ -434,6 +433,23 @@ with decision_engine:
         regions = regions_sr if lang_code == "sr" else regions_en
         categories = CATEGORY_OPTIONS_SR if lang_code == "sr" else CATEGORY_OPTIONS_EN
         ui_text = UI_TEXT[lang_code]
+        
+        # --- New Analysis Button - Available at All Stages ---
+        if st.session_state.stage > 0:
+            st.markdown("---")
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                if st.button(ui_text['new_analysis_button'], 
+                           use_container_width=True, 
+                           type="secondary",
+                           key="new_analysis_top"):
+                    # Clear all session state except for language selection and authentication
+                    keys_to_delete = [key for key in st.session_state.keys() 
+                                     if key not in ['selected_language', 'authenticated', 'username']]
+                    for key in keys_to_delete:
+                        del st.session_state[key]
+                    st.rerun()
+            st.markdown("---")
 
         render_main_interface(lang_code, regions, categories)
 
@@ -1104,12 +1120,3 @@ with decision_engine:
 
                         st.caption(f"{freshness} • Web sources")
                         st.markdown(content_md)
-
-    # --- New Analysis Button ---
-        if st.session_state.stage > 0:
-            if st.button(ui_text['new_analysis_button'], use_container_width=True):
-                # Clear all session state except for language selection
-                for key in st.session_state.keys():
-                    if key != 'selected_language':
-                        del st.session_state[key]
-                st.rerun()
