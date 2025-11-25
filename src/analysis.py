@@ -112,7 +112,7 @@ def get_indicator_series(
             "latest_year": float('nan'),
             "years_available": 0,
             "years_min": None,
-            "year_max": None,
+            "years_max": None,
             "missing_years": [],
             "coverage_pct": 0.0,
         }
