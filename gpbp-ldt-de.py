@@ -223,7 +223,7 @@ with scatterplot:
     # 2D Scatterplot
     # with st.expander("View 2D Scatterplot Options"):
     X_OPTIONS = ['Livability Score', 'Infrastructure Score', 'Prosperity Score']
-    Y_OPTIONS = ['Prosperity Score', 'Infrastructure Score', 'Livabilitiy Score']
+    Y_OPTIONS = ['Prosperity Score', 'Infrastructure Score', 'Livability Score']
     render_scatterplot_options(df_scatter['year'].unique().tolist(), X_OPTIONS, Y_OPTIONS)
     
     year = st.session_state.option_year_scatterplot
