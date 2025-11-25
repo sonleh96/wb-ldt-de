@@ -18,7 +18,7 @@ import plotly.express as px
 from src.config import (
     BUCKET_NAME, CACHE_PATH, UI_TEXT, CATEGORY_OPTIONS_EN,
     CATEGORY_OPTIONS_SR, INDICATOR_SOURCES, COLUMN_ORDER,
-    LIVABILITY_INDICATORS, PROSPERITY_INDICATORS
+    REQUIRE_AUTH
 )
 from src.gcs import read_csv_from_gcs, get_image_from_gcs, read_geojson_from_gcs
 from src.caching import ResponseCacheManager
@@ -420,13 +420,14 @@ with choropleth:
 
 
 with decision_engine:
-    # Check authentication first
-    if not st.session_state.get('authenticated', False):
+    # Check authentication first (if enabled)
+    if REQUIRE_AUTH and not st.session_state.get('authenticated', False):
         render_login_form()
     else:
-        # Show logout button at top
-        render_logout_button()
-        st.markdown("---")
+        # Show logout button at top (only if auth is enabled)
+        if REQUIRE_AUTH:
+            render_logout_button()
+            st.markdown("---")
         
         lang_code = render_language_selection()
 

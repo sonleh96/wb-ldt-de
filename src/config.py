@@ -20,6 +20,9 @@ CATEGORY_OPTIONS_SR = ["Образовање", "Приступ енергији"
 CATEGORY_SR_TO_EN = dict(zip(CATEGORY_OPTIONS_SR, CATEGORY_OPTIONS_EN))
 CATEGORY_EN_TO_SR = dict(zip(CATEGORY_OPTIONS_EN, CATEGORY_OPTIONS_SR))
 
+# --- Authentication Configuration ---
+REQUIRE_AUTH = False  # Set to True to enable authentication, False to bypass
+
 CATEGORY_INDICATOR_DICT = {
     'Education': [
         "Accessibility to School Services (unit: %)",
