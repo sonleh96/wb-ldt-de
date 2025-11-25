@@ -1,13 +1,36 @@
 import base64
 from io import BytesIO
-from datetime import datetime
 
 import streamlit as st
+import streamlit.components.v1 as components
 from PIL import Image
+import re
+import unicodedata
+import numpy as np
+import pandas as pd
 
-from src.config import UI_TEXT, CHART_COLORS, DELTA_THRESHOLDS
+from src.config import UI_TEXT, CHART_COLORS, DELTA_THRESHOLDS, QUADRANT_COLORS, SPATIAL_AUTOCORR_COLORS, SPATIAL_AUTOCORR_LABELS, SCORE_COLS_DICT, SUB_COLS_DICT
 import plotly.graph_objects as go
+import plotly.express as px
 from src.caching import ResponseCacheManager
+
+
+def fix_appearance():
+    # JS script to force light theme
+    detect_theme_js = """
+    <script>
+    // Always use light theme regardless of system setting
+    const theme = "light";
+
+    // send result to Streamlit
+    window.parent.postMessage(
+        {isDarkMode: false},
+        "*"
+    );
+    </script>
+    """
+
+    components.html(detect_theme_js, height=0)
 
 def get_base64_from_image(image: Image.Image) -> str:
     """Converts a PIL Image to a base64 encoded string."""
@@ -15,71 +38,10 @@ def get_base64_from_image(image: Image.Image) -> str:
     image.save(buffered, format="PNG")
     return base64.b64encode(buffered.getvalue()).decode()
 
-def render_sidebar(pimpam_logo: Image.Image, gpbp_logo: Image.Image, cache_manager: ResponseCacheManager):
+def render_sidebar(cache_manager: ResponseCacheManager):
     """Renders the sidebar, including logos, about text, and cache admin panel."""
-    st.sidebar.image(pimpam_logo, use_container_width=True)
-    st.logo(gpbp_logo, size='large')
 
     with st.sidebar:
-        st.markdown(
-            """
-            <style>
-                .sidebar-text {
-                    text-align: left; font-family: Arial, sans-serif; font-size: 0.9rem;
-                    color: black; line-height: 1.5;
-                }
-            </style>
-            """,
-            unsafe_allow_html=True
-        )
-        st.write("### 🌍 About the App")
-        st.markdown(
-            """
-            <div class="sidebar-text">
-                <strong>The Geospatial Planning & Budgeting Platform (GPBP) Local Development Tracker Decision Engine (LDT-DE)</strong> harnesses regional geospatial data developed by the LDT to help policymakers prioritize projects focused on 
-                regional environmental and economic development. It was developed by the World Bank Group as part of the 
-                <a href="https://pim-pam.net/" target="_blank">PimPam Network</a>.
-                This tool not only centralizes and streamlines various remote sensing and geospatial data sources, but also leverages key insights from complementary platforms and digital apps on the PimPam GPBP, such as:
-                <li><a href="https://cbd.pim-pam.net/" target="_blank">Country Benchmarking Dashboard</a> (CBD)</li>
-                <li><a href="https://gpbp.adamplatform.eu/" target="_blank">Climate Change Screening Tool</a> (CCS)</li>
-                <li><a href="https://www.figma.com/proto/MRIuLeqyVOFGJQwVi0sVAg/PIA-final?node-id=14101-76623&p=f&t=wMUuiwyzr7W56K36-0&scaling=min-zoom&content-scaling=fixed&page-id=14101%3A64991&starting-point-node-id=14101%3A76623" target="_blank">Public Infrastructure Access Tool</a> (PIA)</li>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-        st.markdown("<hr style='border: 1px solid #ccc;'>", unsafe_allow_html=True)
-        st.write('### 📄 Documentation')
-        st.markdown("""
-        <div class ="sidebar-text">
-            The following documentation regarding the GPBP LDT - DE is available:
-            <li><a href="https://docs.google.com/presentation/d/19iGMTUGeB7LNRGnFxKTYuRexLW0OjAmn/edit?slide=id.g2e47b9337ae_0_98#slide=id.g2e47b9337ae_0_98" 
-                target="_blank">Pitch Deck</a></li>
-            <li><a href="https://docs.google.com/document/d/1eoCPpdTx9z5NI2lX20aAFzLC1_kHGVfd/edit?usp=sharing&ouid=107640506223612923418&rtpof=true&sd=true" target="_blank">EIG in the WeBA6</a></li>
-            <li><a href="https://docs.google.com/document/d/17LhzOH-EnxfAWaBF8_FHCup8E_fsDe4p0VVfrUG4Aac/edit?usp=sharing" target="_blank">Indicator Methodology</a></li>
-            <li><a href="https://docs.google.com/document/d/1IaHR46oQ8gcmZwwIH6LLMGyyl76Cf0nsgvEY0wuf9OM/edit?usp=sharing" target="_blank">Technical Documentation</a></li>
-        </div>
-        """, unsafe_allow_html=True)
-        st.markdown("<hr style='border: 1px solid #ccc;'>", unsafe_allow_html=True)
-        st.write("### ⚠️ Disclaimer")
-        st.markdown(
-            """
-            <div class="sidebar-text">
-                <p>
-                    The <strong>GPBP LDT - DE</strong> leverages <strong>Generative AI</strong> to analyze data and suggest region-specific and project-level recommendations.
-                </p>
-                <p>
-                    While we strive to deliver <strong>high-quality and accurate outputs</strong>, AI-generated responses may occasionally contain
-                    <strong>inaccuracies, outdated information</strong>, or <strong>unintended biases</strong>. Additionally, due to the probabilistic nature of generative AI, 
-                    the system may produce <strong>slightly different recommendations</strong> across sessions—even when provided with similar inputs.
-                </p>
-                <p>
-                    We strongly recommend that users <strong>verify critical information independently</strong> before making decisions based on these outputs.
-                </p>
-            </div>
-        """,
-        unsafe_allow_html=True
-        )
-        st.markdown("<hr style='border: 1px solid #ccc;'>", unsafe_allow_html=True)
 
         with st.expander("🗄️ Cache Management (GCS)", expanded=False):
             stats = cache_manager.get_cache_stats()
@@ -152,7 +114,65 @@ def render_main_interface(lang: str, regions: list, categories: list):
     
     st.write(ui_text['region_selected'].format(region=region))
     st.write(ui_text['category_selected'].format(category=category))
+    
 
+def render_map_options(years: list, indicators: list):
+    """Renders the map options, including year and indicator selection."""
+        
+    default_year_index = years.index(2024)
+    defaul_indicator_index = indicators.index('Prosperity Score')
+        
+    year = st.selectbox(
+            "Year",
+            years,
+            index=default_year_index,
+            key="option_year"
+    )
+    indicator = st.selectbox(
+            "Indicator",
+            indicators,
+            index=defaul_indicator_index,
+            key="option_indicator"
+    )
+    
+    return None 
+
+def render_scatterplot_options(years: list, indicators_x: list, indicators_y: list):
+    """Renders the scatterplot options, including year and indicator selection."""
+    
+    year = st.selectbox(
+        "Year",
+        years,
+        index=years.index(2024),
+        key="option_year_scatterplot"
+    )
+    
+    indicator_x = st.selectbox(
+        "X-axis Indicator",
+        indicators_x,
+        index=indicators_x.index("Livability Score"),
+        key="option_indicator_x"
+    )
+    
+    indicator_y = st.selectbox(
+        "Y-axis Indicator",
+        indicators_y,
+        index=indicators_y.index('Prosperity Score'),
+        key="option_indicator_y"
+    )
+    
+    return None
+
+def render_3d_scatterplot_options(years: list):
+    """Renders the 3d scatterplot options, including year and indicator selection."""
+    
+    year = st.selectbox(
+        "Year",
+        years,
+        index=years.index(2024),
+        key="option_year_3d_scatterplot")
+    
+    return None
 
 # --- Plotly chart helpers ---
 def render_delta_chip(delta: float, pct_delta: float, higher_is_better: bool) -> str:
@@ -174,23 +194,58 @@ def render_delta_chip(delta: float, pct_delta: float, higher_is_better: bool) ->
     return f"<span style='color:{color}; font-weight:600'>{arrow} {pct_str}</span>"
 
 
+def render_transparency_badges(latest_year, years_min, years_max, coverage_pct, missing_years) -> None:
+    """Render small inline badges: freshness, coverage, and gaps."""
+    freshness = f"Data year: {latest_year}" if latest_year else "Data year: n/a"
+    coverage = f"Coverage: {int(coverage_pct*100)}%" if coverage_pct is not None else "Coverage: n/a"
+    gaps = "Gaps: none" if not missing_years else f"Gaps: {', '.join(str(y) for y in missing_years[:6])}{'…' if len(missing_years) > 6 else ''}"
+    st.caption(f"{freshness} • {coverage} • {gaps}")
+
+
+def render_sources_badges(sources) -> None:
+    """Render a compact list of source badges (supports multiple)."""
+    if not sources:
+        return
+    parts = []
+    for s in sources:
+        label = s.get('label', 'Source')
+        url = s.get('url')
+        if url:
+            parts.append(f"<a href=\"{url}\" target=\"_blank\">{label}</a>")
+        else:
+            parts.append(label)
+    joined = " • ".join(parts)
+    st.caption(f"Sources: {joined}", unsafe_allow_html=True)
+
+
 def chart_latest_comparison_bar(title: str, region_value: float, national_value: float, unit: str, higher_is_better: bool) -> go.Figure:
     region_color = CHART_COLORS["region_good"] if (region_value >= national_value) == higher_is_better else CHART_COLORS["region_bad"]
     fig = go.Figure()
-    fig.add_bar(name=title, x=["Municipality"], y=[region_value], marker_color=region_color)
+    fig.add_bar(name="Municipality", x=["Municipality"], y=[region_value], marker_color=region_color)
     fig.add_bar(name="National avg", x=["Municipality"], y=[national_value], marker_color=CHART_COLORS["national"])
     fig.update_layout(
         barmode='group',
         height=240,
         margin=dict(l=10, r=10, t=60, b=10),
-        showlegend=False,
+        showlegend=True,
+        legend=dict(
+            orientation='h',
+            x=0,
+            xanchor='left',
+            y=1.1,
+            yanchor='top',
+            bgcolor='rgba(255,255,255,0.85)',
+            bordercolor='rgba(0,0,0,0.1)',
+            borderwidth=1,
+            font=dict(size=11)
+        ),
         title=dict(text=title, x=0.01, font=dict(size=14)),
         yaxis_title=unit or "",
     )
     return fig
 
 
-def chart_trend_sparkline(title: str, regional_df, national_df, value_col: str) -> go.Figure:
+def chart_trend_sparkline(title: str, regional_df, national_df, value_col: str, unit: str) -> go.Figure:
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=regional_df['year'], y=regional_df[value_col], mode='lines+markers', name='Municipality', line=dict(color=CHART_COLORS['region_neutral']), marker=dict(size=5)))
     fig.add_trace(go.Scatter(x=national_df['year'], y=national_df[value_col], mode='lines', name='National avg', line=dict(color=CHART_COLORS['national'], dash='dot')))
@@ -202,10 +257,705 @@ def chart_trend_sparkline(title: str, regional_df, national_df, value_col: str) 
     except Exception:
         xaxis_cfg = {}
     fig.update_layout(
-        height=180,
+        height=240,
         margin=dict(l=10, r=10, t=40, b=10),
-        showlegend=False,
+        showlegend=True,
+        legend=dict(
+            orientation='h',
+            x=1,
+            xanchor='right',
+            y=1.15,
+            yanchor='top',
+            bgcolor='rgba(255,255,255,0.85)',
+            bordercolor='rgba(0,0,0,0.1)',
+            borderwidth=1,
+            font=dict(size=11)
+        ),
         title=dict(text=title, x=0.01, font=dict(size=13)),
         xaxis=xaxis_cfg,
+        yaxis_title=unit or "",
     )
     return fig
+
+
+def spacer(px=24):
+    st.markdown(f"<div style='height:{px}px'></div>", unsafe_allow_html=True)
+    
+def remove_unit_suffix(text: str) -> str:
+    """
+    Removes anything from ' (unit' (case-insensitive) onward from a given string.
+    Example: 
+        'Accessibility to Health Services (unit: %)' 
+        → 'Accessibility to Health Services'
+    """
+    return re.sub(r'\s*\(unit.*', '', text, flags=re.IGNORECASE).strip()
+
+# Function to normalize names (remove accents and lowercase)
+def normalize(text):
+    return ''.join(
+        c for c in unicodedata.normalize('NFKD', str(text))
+        if not unicodedata.combining(c)
+    ).lower().strip()
+
+
+# --- Plotting Functions ---
+
+def create_3d_scatter(slice_3d, title="Serbia Municipalities: Composite Score 3D Scatter Plot"):
+    """
+    Create 3D scatter plot for composite scores.
+    
+    Args:
+        slice_3d: DataFrame with Municipality, Livability Score, Infrastructure Score, Prosperity Score
+        title: Plot title
+        
+    Returns:
+        plotly figure
+    """
+    fig = px.scatter_3d(
+        slice_3d,
+        x='Livability Score', y='Infrastructure Score', z='Prosperity Score',
+        hover_data={'Municipality': True,
+                    'Infrastructure Score': ':.2f',
+                    'Prosperity Score': ':.2f',
+                    'Livability Score': ':.2f'},
+    )
+    
+    # Customize marker appearance
+    fig.update_traces(
+        marker=dict(
+            size=10,           # Adjust size (default is usually 6)
+            color='gray', # Set color (can use hex '#4682B4', rgb, or name)
+            opacity=0.8,      # Optional: adjust transparency
+            line=dict(        # Optional: add border
+                color='gray',
+                width=0.5
+            ),
+            
+        )
+    )
+    
+    fig.update_layout(
+        title=dict(text=title, font=dict(size=27), x=0.5, xanchor='center', y=0.9),
+        scene=dict(
+            xaxis=dict(tickfont=dict(size=17), showline=True, linecolor="black", linewidth=2, 
+                      ticks="outside", tickwidth=2, tickcolor="black", range=[0, 100]),
+            yaxis=dict(tickfont=dict(size=17), showline=True, linecolor="black", linewidth=2,
+                      ticks="outside", tickwidth=2, tickcolor="black", range=[0, 100]),
+            zaxis=dict(tickfont=dict(size=17), showline=True, linecolor="black", linewidth=2,
+                      ticks="outside", tickwidth=2, tickcolor="black", range=[0, 100]),
+            aspectratio=dict(x=1, y=1, z=1),
+            aspectmode='manual'
+        ),
+        showlegend=True,
+        legend=dict(
+            font=dict(size=20),
+            orientation='h',
+            yanchor='bottom',
+            y=-0.2,
+            xanchor='center',
+            x=0.5
+        ),
+        height=1000, width=1500
+    )
+    
+    return fig
+
+
+def highlight_municipality_3d(fig, sel, name):
+    """
+    Add highlighted municipality to 3D scatter plot.
+    
+    Args:
+        fig: Existing plotly figure
+        sel: DataFrame slice for selected municipality
+        name: Municipality name
+        
+    Returns:
+        Modified figure
+    """
+    sel_muni = sel[sel["Municipality"] == name]
+    sel_else = sel[sel["Municipality"] != name]
+    district_name = sel_muni["District"].reset_index(drop=True).iloc[0]
+    
+    customdata1 = sel_muni[["Municipality", "Livability Score", "Infrastructure Score", "Prosperity Score"]]
+    fig.add_trace(
+        go.Scatter3d(
+            x=sel_muni['Livability Score'],
+            y=sel_muni['Infrastructure Score'],
+            z=sel_muni['Prosperity Score'],
+            mode='markers',
+            marker=dict(size=10, color='crimson'),
+            name=f"Highlighted: {name}",
+            showlegend=True,
+            customdata=customdata1,
+            hovertemplate=(
+                "Municipality: %{customdata[0]}<br>"
+                "Livability Score: %{x:.2f}<br>"
+                "Infrastructure Score: %{y:.2f}<br>"
+                "Prosperity Score: %{z:.2f}<extra></extra>"
+            )
+        )
+    )
+    
+    customdata2 = sel_else[["Municipality", "Livability Score", "Infrastructure Score", "Prosperity Score"]]
+    fig.add_trace(
+        go.Scatter3d(
+            x=sel_else['Livability Score'],
+            y=sel_else['Infrastructure Score'],
+            z=sel_else['Prosperity Score'],
+            mode='markers',
+            marker=dict(size=10, color='orange'),
+            showlegend=True,
+            name=f"Other Municipalities in {district_name}",
+            customdata=customdata2,
+            hovertemplate=(
+                "Municipality: %{customdata[0]}<br>"
+                "Livability Score: %{x:.2f}<br>"
+                "Infrastructure Score: %{y:.2f}<br>"
+                "Prosperity Score: %{z:.2f}<extra></extra>"
+            )
+        )
+    )
+    
+    return fig
+
+def render_waterfall_chart_options(score_names, score_type="main"):
+    if score_type == "main":
+        score_name = st.selectbox(
+            "Choose a score to analyze:",
+            score_names,
+            index=score_names.index('Prosperity Score'),
+            key="option_score_name_waterfall")
+    if score_type == "sub":
+        sub_score_name = st.selectbox(
+            "Choose a subscore to analyze:",
+            score_names,
+            index=score_names.index('Energy Access Score'),
+            key="option_subscore_name_waterfall")
+    
+    return None
+
+
+def create_waterfall_chart(slice_waterfall, score_type="main"):
+    if score_type == "main":
+        score_col = st.session_state.option_score_name_waterfall
+        sub_cols = SCORE_COLS_DICT[score_col]
+    if score_type == "sub":
+        score_col = st.session_state.option_subscore_name_waterfall
+        sub_cols = SUB_COLS_DICT[score_col]
+    
+    # weights must sum to 1 (change to your real weights)
+    weights = {c: 1/len(sub_cols) for c in sub_cols}
+
+    # --- DATA (use your own df; here we reuse the filtered slice used for the map) ---
+    df = slice_waterfall.copy()  # or slice_choropleth merged with sub-scores
+    df = df[df["year"] == 2024]
+
+    municipality = st.session_state.get('highlight_municipality', "Veliko Gradište")
+    baseline_mode = "Country mean"
+    
+    # --- pick row + compute baseline ---
+    row = df.loc[df["ENGLISH_NAME"] == municipality, sub_cols + [score_col]].iloc[0]
+    if baseline_mode == "Country mean":
+        baseline_sub = df[sub_cols].mean()
+        baseline_total = np.sum([weights[c]*baseline_sub[c] for c in sub_cols])
+    else:
+        baseline_sub = pd.Series({c: 50 for c in sub_cols})
+        baseline_total = 50  # if your Prosperity Score is a weighted average on 0–100
+
+    # --- contributions (positive raises Prosperity, negative lowers) ---
+    diff = row[sub_cols] - baseline_sub
+    contrib = pd.Series({c: weights[c]*diff[c] for c in sub_cols}).sort_values()
+
+    # reconcile total (small numeric drift)
+    # estimated_total = baseline_total + contrib.sum()
+    actual_total = float(row[score_col])
+
+    # --- WATERFALL CHART ---
+    fig = go.Figure(go.Waterfall(
+        name=f"{score_col} Drivers",
+        orientation="v",
+        measure=["absolute"] + ["relative"] * len(contrib) + ["total"],
+        x=["Baseline"] + contrib.index.tolist() + ["Total"],
+        text=[f"{baseline_total:.2f}"] + [f"{v:+.2f}" for v in contrib.values] + [f"{actual_total:.2f}"],
+        y=[baseline_total] + contrib.values.tolist() + [actual_total - baseline_total],
+        decreasing={"marker": {"color": "#e45756"}},  # lowers score
+        increasing={"marker": {"color": "#54a24b"}},  # raises score
+        totals={"marker": {"color": "#4c78a8"}},
+    ))
+    fig.update_layout(
+        title=dict(text=f"{municipality}: Drivers of {score_col}", font=dict(size=27), x=0.5, xanchor='center', y=0.9),
+        yaxis_title="Score (0–100 scale)",
+        xaxis_title="Components",
+        yaxis_title_font=dict(size=16, color="black"),
+        xaxis_title_font=dict(size=16, color="black"),
+        yaxis=dict(
+            range=[0, 100]
+        ),
+        showlegend=False,
+        margin=dict(l=10, r=20, t=60, b=40),
+        height=600,
+        width=600
+    )
+    
+    return fig
+
+
+def create_2d_scatter_with_quadrants(slice_scatter, x_score_name, y_score_name, 
+                                      indicator_x, indicator_y, year, custom_data,
+                                      x_is_score=False, y_is_score=False):
+    """
+    Create 2D scatter plot with quadrant shading and labels.
+    
+    Args:
+        slice_scatter: DataFrame with scores
+        x_score_name: X-axis score name
+        y_score_name: Y-axis score name
+        indicator_x: X-axis indicator full name
+        indicator_y: Y-axis indicator full name
+        year: Year for title
+        custom_data: Custom data for hover
+        x_is_score: If True, indicator_x is already a score
+        y_is_score: If True, indicator_y is already a score
+        
+    Returns:
+        plotly figure
+    """
+    x_min, x_max = 0, 100
+    y_min, y_max = 0, 100
+    x_mid = (x_min + x_max) / 2
+    y_mid = (y_min + y_max) / 2
+    
+    fig = px.scatter(
+        slice_scatter,
+        x=x_score_name,
+        y=y_score_name,
+        hover_data=None,
+        custom_data=custom_data,
+        labels={
+            "ENGLISH_NAME": "Municipality",
+            x_score_name: f'{x_score_name} Score',
+            y_score_name: f'{y_score_name} Score',
+            indicator_x: f"{indicator_x}",
+            indicator_y: f"{indicator_y}",
+        },
+        title=f'{indicator_x} vs {indicator_y} in Serbia, {year}',
+        width=1000, height=1000
+    )
+    
+    # Set explicit axis ranges
+    fig.update_xaxes(range=[x_min, x_max])
+    fig.update_yaxes(range=[y_min, y_max])
+
+    # Add quadrant shading
+    fig.add_shape(type="rect", xref="x", yref="y",
+                x0=x_mid, x1=x_max, y0=y_mid, y1=y_max,
+                fillcolor=QUADRANT_COLORS["high_high"], opacity=0.10, line_width=0, layer="below")
+
+    fig.add_shape(type="rect", xref="x", yref="y",
+                x0=x_min, x1=x_mid, y0=y_mid, y1=y_max,
+                fillcolor=QUADRANT_COLORS["high_low"], opacity=0.10, line_width=0, layer="below")
+
+    fig.add_shape(type="rect", xref="x", yref="y",
+                x0=x_mid, x1=x_max, y0=y_min, y1=y_mid,
+                fillcolor=QUADRANT_COLORS["low_high"], opacity=0.10, line_width=0, layer="below")
+
+    fig.add_shape(type="rect", xref="x", yref="y",
+                x0=x_min, x1=x_mid, y0=y_min, y1=y_mid,
+                fillcolor=QUADRANT_COLORS["low_low"], opacity=0.10, line_width=0, layer="below")
+    
+    # Add quadrant labels
+    # fig.add_annotation(x=(x_mid + x_max)/2, y=(y_mid + y_max)/2,
+    #                 text="High Prosperity and Livability", showarrow=False, font=dict(size=20, color="green"))
+    # fig.add_annotation(x=(x_min + x_mid)/2, y=(y_mid + y_max)/2,
+    #                 text="High Prosperity, Low Livability", showarrow=False, font=dict(size=20, color="#a67c00"))
+    # fig.add_annotation(x=(x_mid + x_max)/2, y=(y_min + y_mid)/2,
+    #                 text="Low Prosperity, High Livability", showarrow=False, font=dict(size=20, color="#a67c00"))
+    # fig.add_annotation(x=(x_min + x_mid)/2, y=(y_min + y_mid)/2,
+    #                 text="Low Prosperity and Livability", showarrow=False, font=dict(size=20, color="red"))
+
+    # Add crosshair lines
+    fig.add_vline(x=x_mid, line_width=2, line_dash="dash", line_color="black")
+    fig.add_hline(y=y_mid, line_width=2, line_dash="dash", line_color="black")
+
+    # Build hover template dynamically based on custom_data columns
+    # custom_data columns are in the order they were added (deduplicated)
+    custom_data_cols = list(custom_data.columns)
+    hover_parts = [f"<b>%{{customdata[0]}}</b>"]  # ENGLISH_NAME is always first
+    
+    # Find indices for each piece of data we want to show
+    x_score_idx = custom_data_cols.index(x_score_name) if x_score_name in custom_data_cols else None
+    if x_score_idx is not None:
+        hover_parts.append(f"{x_score_name}: %{{customdata[{x_score_idx}]:.2f}}")
+        
+    y_score_idx = custom_data_cols.index(y_score_name) if y_score_name in custom_data_cols else None
+    if y_score_idx is not None:
+        hover_parts.append(f"{y_score_name}: %{{customdata[{y_score_idx}]:.2f}}")
+    
+    # Only show indicator values if they're different from scores
+    if not x_is_score:
+        indicator_x_idx = custom_data_cols.index(indicator_x) if indicator_x in custom_data_cols else None
+        if indicator_x_idx is not None:
+            hover_parts.append(f"{indicator_x}: %{{customdata[{indicator_x_idx}]:.2f}}")
+    
+    if not y_is_score:
+        indicator_y_idx = custom_data_cols.index(indicator_y) if indicator_y in custom_data_cols else None
+        if indicator_y_idx is not None:
+            hover_parts.append(f"{indicator_y}: %{{customdata[{indicator_y_idx}]:.2f}}")
+    
+    hovertemplate = "<br>".join(hover_parts) + "<extra></extra>"
+    
+    fig.update_traces(
+        hovertemplate=hovertemplate,
+        marker=dict(color='black')
+    )
+    
+    # Format axis titles - don't add "Score" if it's already in the name
+    x_axis_title = x_score_name if "Score" in x_score_name else f'{x_score_name} Score'
+    y_axis_title = y_score_name if "Score" in y_score_name else f'{y_score_name} Score'
+    
+    fig.update_layout(
+        title=dict(text=f"{y_score_name} vs {x_score_name} in Serbia, {year}",
+                font=dict(size=27), x=0.5, xanchor='center'),
+        xaxis_title=x_axis_title,
+        yaxis_title=y_axis_title,
+        xaxis=dict(tickfont=dict(size=19), showline=True, linecolor="black", linewidth=2, ticks="outside", tickwidth=2, tickcolor="black"),
+        yaxis=dict(tickfont=dict(size=19), showline=True, linecolor="black", linewidth=2, ticks="outside", tickwidth=2, tickcolor="black"),
+        xaxis_title_font=dict(size=23),
+        yaxis_title_font=dict(size=23),
+        plot_bgcolor="white",
+        height=1000,
+        width=1000
+    )
+
+    # Hide the colorbar
+    fig.update_coloraxes(showscale=False)
+    
+    return fig
+
+
+def highlight_municipality_2d(fig, sel, x_score_name, y_score_name, indicator_x, indicator_y, name,
+                              x_is_score=False, y_is_score=False):
+    """
+    Add highlighted municipality and other municipalities in the same district to 2D scatter plot.
+    
+    Args:
+        fig: Existing plotly figure
+        sel: DataFrame slice for all municipalities in the district
+        x_score_name: X-axis score name
+        y_score_name: Y-axis score name
+        indicator_x: X-axis indicator name
+        indicator_y: Y-axis indicator name
+        name: Municipality name to highlight
+        x_is_score: If True, indicator_x is already a score
+        y_is_score: If True, indicator_y is already a score
+        
+    Returns:
+        Modified figure
+    """
+    # Split into selected municipality and others in the same district
+    sel_muni = sel[sel["ENGLISH_NAME"] == name]
+    sel_else = sel[sel["ENGLISH_NAME"] != name]
+    district_name = sel_muni["NAME_1"].reset_index(drop=True).iloc[0]
+    
+    # Build custom_data columns avoiding duplicates
+    custom_data_cols = ['ENGLISH_NAME']
+    for col in [x_score_name, y_score_name, indicator_x, indicator_y]:
+        if col not in custom_data_cols:
+            custom_data_cols.append(col)
+    
+    # Build hover template dynamically
+    hover_parts = [f"<b>%{{customdata[0]}}</b>"]  # ENGLISH_NAME is always first
+    
+    x_score_idx = custom_data_cols.index(x_score_name) if x_score_name in custom_data_cols else None
+    if x_score_idx is not None:
+        hover_parts.append(f"{x_score_name}: %{{customdata[{x_score_idx}]:.2f}}")
+        
+    y_score_idx = custom_data_cols.index(y_score_name) if y_score_name in custom_data_cols else None
+    if y_score_idx is not None:
+        hover_parts.append(f"{y_score_name}: %{{customdata[{y_score_idx}]:.2f}}")
+    
+    # Only show indicator values if they're different from scores
+    if not x_is_score:
+        indicator_x_idx = custom_data_cols.index(indicator_x) if indicator_x in custom_data_cols else None
+        if indicator_x_idx is not None:
+            hover_parts.append(f"{indicator_x}: %{{customdata[{indicator_x_idx}]:.2f}}")
+    
+    if not y_is_score:
+        indicator_y_idx = custom_data_cols.index(indicator_y) if indicator_y in custom_data_cols else None
+        if indicator_y_idx is not None:
+            hover_parts.append(f"{indicator_y}: %{{customdata[{indicator_y_idx}]:.2f}}")
+    
+    hovertemplate = "<br>".join(hover_parts) + "<extra></extra>"
+    
+    # Add trace for the highlighted municipality (crimson)
+    customdata_muni = sel_muni[custom_data_cols]
+    fig.add_trace(
+        go.Scatter(
+            x=sel_muni[x_score_name],
+            y=sel_muni[y_score_name],
+            mode="markers+text",
+            text=sel_muni["ENGLISH_NAME"],
+            textposition="top center",
+            name=f"Highlighted: {name}",
+            marker=dict(
+                symbol="diamond",
+                size=20,
+                line=dict(width=2, color="white"),
+                color="crimson"
+            ),
+            customdata=customdata_muni,
+            hovertemplate=hovertemplate,
+            showlegend=True
+        )
+    )
+    
+    # Add trace for other municipalities in the same district (orange)
+    if not sel_else.empty:
+        customdata_else = sel_else[custom_data_cols]
+        fig.add_trace(
+            go.Scatter(
+                x=sel_else[x_score_name],
+                y=sel_else[y_score_name],
+                mode="markers",
+                name=f"Other Municipalities in {district_name}",
+                marker=dict(
+                    symbol="circle",
+                    size=15,
+                    line=dict(width=2, color="white"),
+                    color="orange"
+                ),
+                customdata=customdata_else,
+                hovertemplate=hovertemplate,
+                showlegend=True
+            )
+        )
+    
+    return fig
+
+
+def get_choropleth_labels(indicator):
+    """
+    Get labels dictionary for choropleth based on indicator type.
+    
+    Args:
+        indicator: Indicator name
+        
+    Returns:
+        Dictionary of labels
+    """
+    if "Score" not in indicator:
+        return {
+            "NAME_1": "District",
+            "ENGLISH_NAME": "Municipality",
+            indicator: f"{indicator}", 
+            f'{indicator}_score': f'{remove_unit_suffix(indicator)} Score'
+        }
+    else:
+        return {
+            "NAME_1": "District",
+            "ENGLISH_NAME": "Municipality",
+            indicator: f"{indicator}"
+        }
+
+
+def create_choropleth_map(slice_choropleth, geojson_data, indicator, labels, year, opacity=0.7):
+    """
+    Create choropleth mapbox with proper styling.
+    
+    Args:
+        slice_choropleth: GeoDataFrame with scores
+        geojson_data: GeoJSON data
+        indicator: Indicator name
+        labels: Labels dictionary
+        year: Year for title
+        opacity: Map opacity
+        
+    Returns:
+        plotly figure
+    """
+    fig = px.choropleth_mapbox(
+        slice_choropleth,
+        geojson=geojson_data,
+        locations='ENGLISH_NAME',
+        featureidkey='properties.ENGLISH_NAME',
+        color=f'{indicator}_score' if "Score" not in indicator else indicator,
+        color_continuous_scale="RdYlGn",
+        range_color=(0, 100),
+        hover_data=['ENGLISH_NAME', indicator],
+        labels=labels,
+        title=f'{remove_unit_suffix(indicator)} in Serbia, {year}',
+        mapbox_style="carto-positron",
+        center={"lat": 44.0, "lon": 21.0},
+        zoom=6.5,
+        opacity=opacity,
+        width=1000,
+        height=1000
+    )
+    
+    fig.update_layout(
+        margin={"r":0,"t":40,"l":0,"b":0},
+        coloraxis_colorbar_title_text=f'{remove_unit_suffix(indicator)} Score' if "Score" not in indicator else remove_unit_suffix(indicator),
+        coloraxis_colorbar_title_font=dict(size=15, color="black"),
+        title=dict(text=f'{remove_unit_suffix(indicator)} in Serbia, {year}',
+                   font=dict(size=30, color="black")),
+    )
+    
+    return fig
+
+
+def highlight_municipality_choropleth(fig, sel, muni_name):
+    """
+    Add boundary outline to choropleth for highlighted municipality.
+    
+    Args:
+        fig: Existing plotly figure
+        sel: GeoDataFrame slice for selected municipality
+        
+    Returns:
+        Modified figure
+    """
+    muni_geom = sel[sel["ENGLISH_NAME"] == muni_name].geometry.iloc[0]
+    other_geom = sel[sel["ENGLISH_NAME"] != muni_name].reset_index(drop=True).geometry
+    
+    # Handle both Polygon and MultiPolygon
+    # if geom.geom_type == 'Polygon':
+    #     coords = list(geom.exterior.coords)
+    #     lons, lats = zip(*coords)
+    #     fig.add_trace(
+    #         go.Scattermapbox(
+    #             lon=lons,
+    #             lat=lats,
+    #             mode='lines',
+    #             line=dict(width=3, color='black'),
+    #             showlegend=False,
+    #             hoverinfo='skip'
+    #         )
+    #     )
+    # elif geom.geom_type == 'MultiPolygon':
+    
+    for i in range(len(other_geom)):
+        for polygon in other_geom.iloc[i].geoms:
+            coords = list(polygon.exterior.coords)
+            lons, lats = zip(*coords)
+            fig.add_trace(
+                go.Scattermapbox(
+                    lon=lons,
+                    lat=lats,
+                    mode='lines',
+                    line=dict(width=4, color='orange'),
+                    showlegend=False,
+                    hoverinfo='skip'
+                )
+            )
+            
+    for polygon in muni_geom.geoms:
+        coords = list(polygon.exterior.coords)
+        lons, lats = zip(*coords)
+        fig.add_trace(
+                go.Scattermapbox(
+                    lon=lons,
+                    lat=lats,
+                    mode='lines',
+                    line=dict(width=3, color='red'),
+                    showlegend=False,
+                    hoverinfo='skip'
+            )
+        )
+        
+    
+    return fig
+
+
+def create_spatial_autocorr_map(slice_choropleth, geojson_data, indicator, year):
+    """
+    Create spatial autocorrelation choropleth map.
+    
+    Args:
+        slice_choropleth: GeoDataFrame with cluster labels
+        geojson_data: GeoJSON data
+        indicator: Indicator name
+        year: Year for title
+        
+    Returns:
+        plotly figure
+    """
+    category_order = {"cl": SPATIAL_AUTOCORR_LABELS}
+    color_map = SPATIAL_AUTOCORR_COLORS
+    
+    fig = px.choropleth_mapbox(
+        slice_choropleth,
+        geojson=geojson_data,
+        locations="ENGLISH_NAME",
+        featureidkey="properties.ENGLISH_NAME",
+        color="cl",
+        category_orders=category_order,
+        color_discrete_map=color_map,
+        hover_data=["ENGLISH_NAME", "cl"],
+        labels={"ENGLISH_NAME": "Municipality", "cl": "Cluster Type"},
+        mapbox_style="carto-positron",
+        center={"lat": 44.0, "lon": 21.0},
+        zoom=6.5,
+        opacity=0.7,
+    )
+    
+    fig.update_traces(marker_line_width=0.5, marker_line_color="white")
+    fig.update_layout(
+        margin=dict(l=0, r=0, t=40, b=0),
+        legend_title_text="Cluster Type",
+        showlegend=True,
+        legend=dict(
+            orientation="v",
+            yanchor="middle",
+            y=0.8,
+            xanchor="left",
+            x=0.6,
+            bgcolor="rgba(255,255,255,0.7)",
+            borderwidth=0.5,
+            font=dict(size=14)
+        ),
+        title=dict(
+            text=f"Local Spatial Autocorrelation of {remove_unit_suffix(indicator)} in Serbia, {year}",
+            font=dict(size=24),
+            x=0, xanchor="left"
+        ),
+        plot_bgcolor="white",
+        height=1000,
+        width=1000,
+    )
+    
+    return fig
+
+
+# def render_spatial_metrics(slice_choropleth, global_significance, region_local_significance):
+#     """
+#     Render the three metrics columns for spatial analysis.
+    
+#     Args:
+#         slice_choropleth: GeoDataFrame
+#         global_significance: Global Moran's I significance
+#         region_local_significance: % of municipalities with significant local autocorrelation
+#     """
+#     col1, col2, col3 = st.columns(3)
+#     col1.metric("Municipalities", len(slice_choropleth))
+#     col2.metric("Global Spatial Autocorrelation", global_significance)
+#     col3.metric("Municipalities with Significant Local Spatial Autocorrelation", f'{region_local_significance}%')
+
+def render_spatial_metrics(slice_choropleth, sel, chosen_district):
+    """
+    Render the three metrics columns for spatial analysis.
+    
+    Args:
+        slice_choropleth: GeoDataFrame
+        global_significance: Global Moran's I significance
+        region_local_significance: % of municipalities with significant local autocorrelation
+    """
+    col1, col2, col3 = st.columns(3)
+    
+    col1.metric("Associated District", chosen_district)
+    col2.metric("Number of Municipalities in District", len(sel["ENGLISH_NAME"].unique()))
+    col3.metric("Total number of Municipalities", len(slice_choropleth))
+    
+    st.text("")
+    st.text("") 
+    st.text("")

@@ -1,124 +1,88 @@
-aiohappyeyeballs==2.6.1
-aiohttp==3.12.0
-aiosignal==1.3.2
+# Core Streamlit and Web Framework
+streamlit==1.45.1
 altair==5.5.0
-annotated-types==0.7.0
-anyio==4.6.2.post1
-asttokens @ file:///home/conda/feedstock_root/build_artifacts/asttokens_1733250440834/work
-async-timeout==4.0.3
-attrs==25.3.0
-blinker==1.9.0
-cachetools==5.5.2
-certifi==2024.8.30
-charset-normalizer==3.4.1
-click==8.2.1
-colorama @ file:///home/conda/feedstock_root/build_artifacts/colorama_1733218098505/work
-comm @ file:///home/conda/feedstock_root/build_artifacts/comm_1733502965406/work
-dataclasses-json==0.6.7
-debugpy @ file:///D:/bld/debugpy_1744321248910/work
-decorator @ file:///home/conda/feedstock_root/build_artifacts/decorator_1740384970518/work
-distro==1.9.0
-exceptiongroup @ file:///home/conda/feedstock_root/build_artifacts/exceptiongroup_1746947292760/work
-executing @ file:///home/conda/feedstock_root/build_artifacts/executing_1745502089858/work
-faiss-cpu==1.11.0
-frozenlist==1.6.0
-gitdb==4.0.12
-GitPython==3.1.44
-google-api-core==2.24.1
-google-auth==2.38.0
-google-cloud-core==2.4.2
+
+# Data Processing and Analysis
+pandas==2.2.3
+numpy==2.2.6
+geopandas==0.14.0
+
+# Google Cloud Storage
 google-cloud-storage==3.1.0
+google-cloud-core==2.4.2
+google-auth==2.38.0
+google-api-core==2.24.1
 google-crc32c==1.6.0
 google-resumable-media==2.7.2
 googleapis-common-protos==1.69.1
-greenlet==3.2.2
-h11==0.14.0
-httpcore==1.0.6
-httpx==0.27.2
-httpx-sse==0.4.0
-idna==3.10
-importlib_metadata @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_importlib-metadata_1747934053/work
-ipykernel @ file:///D:/bld/ipykernel_1719845595208/work
-ipython @ file:///D:/bld/bld/rattler-build_ipython_1745673220/work
-jedi @ file:///home/conda/feedstock_root/build_artifacts/jedi_1733300866624/work
-Jinja2==3.1.6
-jiter==0.6.1
-jsonpatch==1.33
-jsonpointer==3.0.0
-jsonschema==4.23.0
-jsonschema-specifications==2025.4.1
-jupyter_client @ file:///home/conda/feedstock_root/build_artifacts/jupyter_client_1733440914442/work
-jupyter_core @ file:///D:/bld/jupyter_core_1727163532151/work
-langchain==0.3.25
-langchain-community==0.3.24
-langchain-core==0.3.61
-langchain-text-splitters==0.3.8
-langsmith==0.3.42
-MarkupSafe==3.0.2
-marshmallow==3.26.1
-matplotlib-inline @ file:///home/conda/feedstock_root/build_artifacts/matplotlib-inline_1733416936468/work
-multidict==6.4.4
-mypy_extensions==1.1.0
-narwhals==1.40.0
-nest_asyncio @ file:///home/conda/feedstock_root/build_artifacts/nest-asyncio_1733325553580/work
-numpy==2.2.6
+
+# OpenAI and LLM
 openai==1.82.0
-orjson==3.10.18
-packaging==24.2
-pandas==2.2.3
-parso @ file:///home/conda/feedstock_root/build_artifacts/parso_1733271261340/work
-pickleshare @ file:///home/conda/feedstock_root/build_artifacts/pickleshare_1733327343728/work
-pillow==11.2.1
-platformdirs @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_platformdirs_1746710438/work
-prompt_toolkit @ file:///home/conda/feedstock_root/build_artifacts/prompt-toolkit_1744724089886/work
-propcache==0.3.1
-proto-plus==1.26.0
-protobuf==5.29.3
-psutil @ file:///D:/bld/psutil_1740663160591/work
-pure_eval @ file:///home/conda/feedstock_root/build_artifacts/pure_eval_1733569405015/work
-pyarrow==20.0.0
-pyasn1==0.6.1
-pyasn1_modules==0.4.1
+tiktoken==0.9.0
+
+# Data Validation and Serialization
 pydantic==2.9.2
 pydantic-settings==2.9.1
 pydantic_core==2.23.4
+
+# Visualization
+plotly
 pydeck==0.9.1
-Pygments @ file:///home/conda/feedstock_root/build_artifacts/pygments_1736243443484/work
-PyPDF2==3.0.1
-python-dateutil @ file:///home/conda/feedstock_root/build_artifacts/python-dateutil_1733215673016/work
+Pillow==11.2.1
+
+# HTTP and Networking
+requests==2.32.3
+httpx==0.27.2
+httpcore==1.0.6
+aiohttp==3.12.0
+httpx-sse==0.4.0
+
+# Utilities
+python-dateutil
 python-dotenv==1.1.0
 pytz==2025.2
-pywin32==307
-PyYAML==6.0.2
-pyzmq @ file:///D:/bld/pyzmq_1743831231478/work
-referencing==0.36.2
-regex==2024.11.6
-requests==2.32.3
-requests-toolbelt==1.0.0
-rpds-py==0.25.1
-rsa==4.9
-six @ file:///home/conda/feedstock_root/build_artifacts/six_1733380938961/work
-smmap==5.0.2
-sniffio==1.3.1
-SQLAlchemy==2.0.41
-stack_data @ file:///home/conda/feedstock_root/build_artifacts/stack_data_1733569443808/work
-streamlit==1.45.1
-tenacity==9.1.2
-tiktoken==0.9.0
-toml==0.10.2
-tornado @ file:///D:/bld/tornado_1748003317080/work
-tqdm==4.66.5
-traitlets @ file:///home/conda/feedstock_root/build_artifacts/traitlets_1733367359838/work
-typing-inspect==0.9.0
-typing-inspection==0.4.1
-typing_extensions==4.12.2
-tzdata==2025.2
+certifi==2024.8.30
+charset-normalizer==3.4.1
+idna==3.10
 urllib3==2.3.0
+
+# Git Integration
+GitPython==3.1.44
+gitdb==4.0.12
+
+# JSON and Data Structures
+jsonschema==4.23.0
+jsonschema-specifications==2025.4.1
+orjson==3.10.18
+dataclasses-json==0.6.7
+
+
+# Markdown and Templating
+Jinja2==3.1.6
+MarkupSafe==3.0.2
+
+# Configuration and Settings
+PyYAML==6.0.2
+toml==0.10.2
+
+# Async and Concurrency
+aiosignal==1.3.2
+async-timeout==4.0.3
+anyio==4.6.2.post1
+
+# Caching and Storage
+cachetools==5.5.2
+
+# Progress and Logging
+tqdm==4.66.5
+
+# Other Dependencies
+tenacity==9.1.2
 watchdog==6.0.0
-wcwidth @ file:///home/conda/feedstock_root/build_artifacts/wcwidth_1733231326287/work
-yarl==1.20.0
-zipp @ file:///home/conda/feedstock_root/build_artifacts/zipp_1732827521216/work
-zstandard==0.23.0
-Pillow
+packaging==24.2
+regex==2024.11.6
+SQLAlchemy==2.0.41
+
+# Testing (optional, can be removed for production)
 pytest
 pytest-mock
