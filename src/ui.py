@@ -117,17 +117,8 @@ def render_main_interface(lang: str, regions: list, categories: list):
     
 
 def render_map_options(years: list, indicators: list):
-    """Renders the map options, including year and indicator selection."""
-        
-    default_year_index = years.index(2024)
+    """Renders the map options (indicator selection only). Year is globally set in sidebar."""
     defaul_indicator_index = indicators.index('Prosperity Score')
-        
-    year = st.selectbox(
-            "Year",
-            years,
-            index=default_year_index,
-            key="option_year"
-    )
     indicator = st.selectbox(
             "Indicator",
             indicators,
@@ -138,14 +129,7 @@ def render_map_options(years: list, indicators: list):
     return None 
 
 def render_scatterplot_options(years: list, indicators_x: list, indicators_y: list):
-    """Renders the scatterplot options, including year and indicator selection."""
-    
-    year = st.selectbox(
-        "Year",
-        years,
-        index=years.index(2024),
-        key="option_year_scatterplot"
-    )
+    """Renders the scatterplot options (X/Y indicators only). Year is globally set in sidebar."""
     
     indicator_x = st.selectbox(
         "X-axis Indicator",
@@ -164,13 +148,7 @@ def render_scatterplot_options(years: list, indicators_x: list, indicators_y: li
     return None
 
 def render_3d_scatterplot_options(years: list):
-    """Renders the 3d scatterplot options, including year and indicator selection."""
-    
-    year = st.selectbox(
-        "Year",
-        years,
-        index=years.index(2024),
-        key="option_year_3d_scatterplot")
+    """3D scatterplot options (no year control; year is globally set in sidebar)."""
     
     return None
 
@@ -449,13 +427,53 @@ def create_waterfall_chart(slice_waterfall, score_type="main"):
 
     # --- DATA (use your own df; here we reuse the filtered slice used for the map) ---
     df = slice_waterfall.copy()  # or slice_choropleth merged with sub-scores
-    df = df[df["year"] == 2024]
+    # Filter to selected year if present
+    current_year = st.session_state.get("selected_year", 2024)
+    try:
+        if "year" in df.columns:
+            df_year = df[df["year"] == current_year]
+            if not df_year.empty:
+                df = df_year
+    except Exception:
+        pass  # if no year column or filtering fails
 
-    municipality = st.session_state.get('highlight_municipality', "Veliko Gradište")
+    # Read municipality from global selector; accept partial/accent-free matches
+    muni_input = str(st.session_state.get('highlight_municipality', "Veliko Gradište") or "").strip()
+    # Build lookup on available names
+    try:
+        available = list(df["ENGLISH_NAME"].dropna().unique())
+    except Exception:
+        available = []
+    lookup = {normalize(name): name for name in available}
+    key = normalize(muni_input)
+    municipality = lookup.get(key)
+    if not municipality and key:
+        # try substring matches
+        candidates = [orig for norm, orig in lookup.items() if key in norm]
+        if len(candidates) == 1:
+            municipality = candidates[0]
+        elif len(candidates) > 1:
+            # prefer the shortest match (often exact municipality) as a heuristic
+            municipality = min(candidates, key=len)
+    if not municipality:
+        municipality = "Veliko Gradište" if "Veliko Gradište" in available else (available[0] if available else None)
+    if not municipality:
+        return None
+
     baseline_mode = "Country mean"
     
     # --- pick row + compute baseline ---
-    row = df.loc[df["ENGLISH_NAME"] == municipality, sub_cols + [score_col]].iloc[0]
+    row_df = df.loc[df["ENGLISH_NAME"] == municipality, sub_cols + [score_col]].head(1)
+    if row_df.empty:
+        # fallback: try any year for that municipality
+        try:
+            any_year_df = slice_waterfall.loc[slice_waterfall["ENGLISH_NAME"] == municipality, sub_cols + [score_col]].head(1)
+            if any_year_df.empty:
+                return None
+            row_df = any_year_df
+        except Exception:
+            return None
+    row = row_df.iloc[0]
     if baseline_mode == "Country mean":
         baseline_sub = df[sub_cols].mean()
         baseline_total = np.sum([weights[c]*baseline_sub[c] for c in sub_cols])

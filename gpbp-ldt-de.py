@@ -133,6 +133,31 @@ gpbp_logo = get_image_from_gcs(storage_client, BUCKET_NAME, "decision_engine/inp
 
 # render_sidebar(cache_manager)
 
+# --- Global Sidebar: Municipality Selector ---
+if 'highlight_municipality' not in st.session_state:
+    st.session_state.highlight_municipality = "Veliko Gradište"
+with st.sidebar:
+    st.markdown("### 🔎 Municipality selector")
+    st.text_input(
+        "Highlight a municipality (you can type partial or accent-free name, e.g., sabac or Nis):",
+        value=st.session_state.highlight_municipality,
+        placeholder="e.g., sabac or Nis",
+        key="highlight_municipality"
+    )
+    # Global Year selector
+    try:
+        years_available = sorted(list(set(int(y) for y in gdf_score_geom['year'].dropna().tolist())))
+    except Exception:
+        years_available = [2024]
+    default_year_index = years_available.index(2024) if 2024 in years_available else len(years_available) - 1
+    st.markdown("### 📅 Year")
+    st.selectbox(
+        "Select year:",
+        years_available,
+        index=default_year_index,
+        key="selected_year"
+    )
+
 # --- Authentication Functions ---
 def render_login_form():
     """Render login form and handle authentication."""
@@ -196,17 +221,8 @@ with scatterplot:
     df_scatter = pd.DataFrame(gdf_score_geom.drop(['population_total'], axis=1))
     name_lookup = {normalize(s): s for s in df_scatter["ENGLISH_NAME"].unique()}
     
-    # Text input box
-    highlight_txt = st.text_input(
-        "🔎 Highlight a municipality (you can type partial or accent-free name, e.g., sabac or Nis):",
-        value="Veliko Gradište", 
-        placeholder="e.g., sabac or Nis",
-        key="highlight_municipality_scatter"
-    )
-    
-    # Store in session state for sharing between tabs
-    if highlight_txt:
-        st.session_state.highlight_municipality = highlight_txt
+    # Read from global sidebar selector
+    highlight_txt = st.session_state.get("highlight_municipality", "")
     
     st.subheader("2D Scatterplot")
     st.write("\
@@ -226,7 +242,7 @@ with scatterplot:
     Y_OPTIONS = ['Prosperity Score', 'Infrastructure Score', 'Livability Score']
     render_scatterplot_options(df_scatter['year'].unique().tolist(), X_OPTIONS, Y_OPTIONS)
     
-    year = st.session_state.option_year_scatterplot
+    year = st.session_state.selected_year
     indicator_x = st.session_state.option_indicator_x
     indicator_y = st.session_state.option_indicator_y
     
@@ -286,7 +302,7 @@ with scatterplot:
              ")
     
     render_3d_scatterplot_options(df_scatter['year'].unique().tolist())
-    year = st.session_state.option_year_3d_scatterplot
+    year = st.session_state.selected_year
     slice_3d = prepare_3d_scatter_data(df_scatter, year)
     
     # Create 3D scatter plot
@@ -332,21 +348,10 @@ with choropleth:
     
     render_map_options(df_choropleth['year'].unique().tolist(), df_choropleth.columns[4:-1].to_list())
     
-    # Text input box
-    default_value = st.session_state.get('highlight_municipality', "Veliko Gradište")
+    # Read from global sidebar selector
+    highlight_txt_choropleth = st.session_state.get('highlight_municipality', "Veliko Gradište")
     
-    highlight_txt_choropleth = st.text_input(
-        "🔎 Highlight a municipality (you can type partial or accent-free name, e.g., sabac or Nis):",
-        value=default_value, 
-        placeholder="e.g., sabac or Nis",
-        key="highlight_municipality_choropleth"
-    )
-    
-    # Store in session state for sharing between tabs
-    if highlight_txt_choropleth:
-        st.session_state.highlight_municipality = highlight_txt_choropleth
-    
-    year = st.session_state.option_year
+    year = st.session_state.selected_year
     indicator = st.session_state.option_indicator
     
     # Prepare choropleth data 
