@@ -228,8 +228,8 @@ with scatterplot:
     st.write("\
              This scatterplot shows the relationship between two chosen scores for each municipality in Serbia, filtered by year. \
              Please adjust the year and the indicators using the dropdown menus below. \
-             The highlighted municipality and others belonging in the same district will be highlighted in the plot. \
-             ")
+             The highlighted <strong style='color:red'>municipality</strong> and <strong style='color:orange'>others belonging in the same district</strong> will be highlighted in the plot. \
+             ", unsafe_allow_html=True)
     st.write("The quadrant shading indicates the relative performance of the municipalities in the two chosen scores. \
              The top-right quadrant (green) is the best performing municipalities, the top-left quadrant (yellow) is the best performing municipalities in the  score on the y-axis, \
              the bottom-right quadrant (yellow) is the best performing municipalities in the first chosen score on the x-axis, and the bottom-left quadrant (red) is the least performing municipalities in the two chosen scores. \
@@ -298,8 +298,8 @@ with scatterplot:
     st.write("\
              This scatterplot shows the Prosperity Score, Infrastructure Score, and Livability Score for each municipality in Serbia, filtered by year. \
              Please adjust the year using the dropdown menu below. \
-             The highlighted municipality and others belonging in the same district will be highlighted, in red and orange colors respectively, on the plot for better visualization. \
-             ")
+             The highlighted <strong style='color:red'>municipality</strong> and <strong style='color:orange'>others belonging in the same district</strong> will be highlighted, in red and orange colors respectively, on the plot for better visualization. \
+             ", unsafe_allow_html=True)
     
     render_3d_scatterplot_options(df_scatter['year'].unique().tolist())
     year = st.session_state.selected_year
@@ -337,6 +337,14 @@ with choropleth:
     
     st.write("")
     
+    st.subheader("Choropleth Plot")
+    st.markdown("\
+             This map plot shows the spatial distribution of the chosen score or indicator for each municipality in Serbia, filtered by year. \
+             Please adjust the year and the indicator or score using the dropdown menus below. \
+             The highlighted <strong style='color:red'>municipality</strong> and <strong style='color:orange'>others belonging in the same district</strong>  will be highlighted on the map. \
+             You can hover over the map to see the value of the score or indicator for each municipality. \
+             The colorbar,on the right, shows the range of values, scaled between 0 and 100, for the chosen score or indicator. \
+             ", unsafe_allow_html=True)
     
     # Prepare data
     df_choropleth = gdf_score_geom.drop(['population_total'], axis=1)
@@ -360,14 +368,6 @@ with choropleth:
     # Create choropleth map
     labels = get_choropleth_labels(indicator)
     
-    st.subheader("Choropleth Plot")
-    st.write("\
-             This map plot shows the spatial distribution of the chosen score or indicator for each municipality in Serbia, filtered by year. \
-             Please adjust the year and the indicator or score using the dropdown menus below. \
-             The highlighted municipality and others belonging in the same district will be highlighted on the map. \
-             You can hover over the map to see the value of the score or indicator for each municipality. \
-             The colorbar,on the right, shows the range of values, scaled between 0 and 100, for the chosen score or indicator. \
-             ")
     fig = create_choropleth_map(slice_choropleth, geojson_data, indicator, labels, year)
     
     # Highlight municipality if match found
