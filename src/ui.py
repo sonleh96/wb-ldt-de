@@ -494,7 +494,7 @@ def create_waterfall_chart(slice_waterfall, score_type="main"):
         name=f"{score_col} Drivers",
         orientation="v",
         measure=["absolute"] + ["relative"] * len(contrib) + ["total"],
-        x=["Baseline"] + contrib.index.tolist() + ["Total"],
+        x=["Country Average"] + contrib.index.tolist() + ["Municipality's Score"],
         text=[f"{baseline_total:.2f}"] + [f"{v:+.2f}" for v in contrib.values] + [f"{actual_total:.2f}"],
         y=[baseline_total] + contrib.values.tolist() + [actual_total - baseline_total],
         decreasing={"marker": {"color": "#e45756"}},  # lowers score
@@ -502,13 +502,17 @@ def create_waterfall_chart(slice_waterfall, score_type="main"):
         totals={"marker": {"color": "#4c78a8"}},
     ))
     fig.update_layout(
-        title=dict(text=f"{municipality}: Drivers of {score_col}", font=dict(size=27), x=0.5, xanchor='center', y=0.9),
+        title=dict(text=f"{municipality}: Drivers of {score_col.replace(' Score', '')} in {current_year}", font=dict(size=27), x=0.5, xanchor='center', y=0.9),
         yaxis_title="Score (0–100 scale)",
         xaxis_title="Components",
-        yaxis_title_font=dict(size=16, color="black"),
-        xaxis_title_font=dict(size=16, color="black"),
+        yaxis_title_font=dict(size=20, color="black"),
+        xaxis_title_font=dict(size=20, color="black"),
         yaxis=dict(
-            range=[0, 100]
+            range=[0, 100],
+            tickfont=dict(size=16, color="black"),
+        ),
+        xaxis=dict(
+            tickfont=dict(size=16, color="black"),
         ),
         showlegend=False,
         margin=dict(l=10, r=20, t=60, b=40),
