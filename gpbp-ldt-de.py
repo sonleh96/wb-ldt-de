@@ -398,11 +398,16 @@ with choropleth:
     
     # Score Driver
     st.subheader("Score Driver Composition")
-    st.write("\
-             This waterfall chart shows the drivers of the Prosperity Score, Infrastructure Score, Livability Score\
-             The drivers demonstrate how each component contributes to the overall score. \
-             Please adjust the score using the dropdown menu below.\
-             ")
+    st.markdown("""
+This waterfall chart shows the drivers of the Prosperity Score, Infrastructure Score, Livability Score. 
+The drivers demonstrate how each component contributes to the overall score.
+
+- The **<strong style='color:blue'>left blue bar</strong> (Baseline)** is the average score across all municipalities in Serbia.
+- The **<strong style='color:blue'>right blue bar</strong> (Actual)** is the municipality's actual composite score.
+- The **bars between the Baseline and Actual (Gaps)** = "how positively (<strong style='color:green'>green</strong>) or negatively (<strong style='color:red'>red</strong>) this region is from the average score, in score points".
+
+Please adjust the score using the dropdown menu below.
+    """, unsafe_allow_html=True)
     render_waterfall_chart_options(["Prosperity Score", "Infrastructure Score", "Livability Score"], "main")
     score_name = st.session_state.option_score_name_waterfall
     fig_waterfall = create_waterfall_chart(df_score, "main")
@@ -411,11 +416,18 @@ with choropleth:
         
     # Subscore Driver
     st.subheader("Sub-Score Driver Composition")
-    st.write("\
-             This waterfall chart shows the drivers of the subscores in the Energy Access, Digitalization, Sustainable Transport, Education, Health, and Environment Deomains. \
-             The drivers demonstrate how each component contributes to the overall score. \
-             Please adjust the subscore using the dropdown menu below. \
-             ")
+    st.markdown("""
+This waterfall chart shows the drivers of the subscores in the Energy Access, Digitalization, Sustainable Transport, Education, Health, and Environment Domains. 
+The drivers demonstrate how each component contributes to the overall score.
+
+- The **<strong style='color:blue'>left blue bar</strong> (Baseline)** is the average score across all municipalities in Serbia.
+- The **<strong style='color:blue'>right blue bar</strong> (Actual)** is the municipality's actual composite score.
+- The **bars between the Baseline and Actual (Gaps)** = "how positively (<strong style='color:green'>green</strong>) or negatively (<strong style='color:red'>red</strong>) this region is from the average score, in score points".
+
+Please adjust the subscore using the dropdown menu below.
+    """, unsafe_allow_html=True)
+    
+    
     render_waterfall_chart_options(["Energy Access Score", "Digitalization Score", "Sustainable Transport Score", "Education Score", "Health Score", "Environment Score"], 
                                    "sub")
     sub_score_name = st.session_state.option_subscore_name_waterfall
