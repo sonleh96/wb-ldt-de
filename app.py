@@ -38,10 +38,12 @@ def init_gcs_client():
 
 storage_client = init_gcs_client()
 pimpam_logo = get_image_from_gcs(storage_client, BUCKET_NAME, "decision_engine/inputs/wbg-pimpam.png")
-gpbp_logo = get_image_from_gcs(storage_client, BUCKET_NAME, "decision_engine/inputs/GPBP logo.jpg")
+# gpbp_logo = get_image_from_gcs(storage_client, BUCKET_NAME, "decision_engine/inputs/GPBP logo.jpg")
 
-st.logo(gpbp_logo, size='large')
-st.sidebar.image(pimpam_logo, use_container_width=True)
+st.logo("images/LDT-logo.png", size='large')
+with st.sidebar:
+    st.image(pimpam_logo, use_container_width=True)
+    st.image("images/GPBP Logo.png", use_container_width=True)
 
 home_page = st.Page("home.py", title="Home")
 

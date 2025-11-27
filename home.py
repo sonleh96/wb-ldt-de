@@ -150,7 +150,7 @@ st.markdown("""
         }
         
         .hero-description {
-            font-size: 2rem;
+            font-size: 10rem;
             line-height: 1.8;
             margin-bottom: 50px;
             color: #4b5563;
@@ -312,6 +312,7 @@ st.markdown('<div class="content-wrapper">', unsafe_allow_html=True)
 st.markdown("""
     <div class="hero-section">
         <h1 class="hero-title">The Local Development Tracker Decision Engine</h1>
+        <h1 class="hero-subtitle">Serbia Edition</h1>
         <p class="hero-description">
             Leveraging geospatial data and advanced analytics to rank municipalities across Serbia, 
             the Local Development Tracker Decision Engine, part of the World Bank's <a href="https://pim-pam.net/" target="_blank">Geospatial Planning & Budgeting Platform (GPBP)</a>, helps policymakers identify communities 
