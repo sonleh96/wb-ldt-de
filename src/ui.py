@@ -278,9 +278,9 @@ def normalize(text):
 
 # --- Plotting Functions ---
 
-def create_3d_scatter(slice_3d, title="Serbia Municipalities: Composite Score 3D Scatter Plot"):
+def create_3d_scatter(slice_3d, title="Serbia Municipalities: 3D Scatter Plot's Key Pillars"):
     """
-    Create 3D scatter plot for composite scores.
+    Create 3D scatter plot for composite pillars.
     
     Args:
         slice_3d: DataFrame with Municipality, Livability Score, Infrastructure Score, Prosperity Score

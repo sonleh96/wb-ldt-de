@@ -208,11 +208,11 @@ scatterplot, choropleth, decision_engine = st.tabs([
 with scatterplot:
     st.header("📊 Multi-Score Analysis")
     # Explain the purpose of this section
-    st.write("This section allows you to analyze the relationship between the Prosperity Score, Infrastructure Score, and Livability Score for each municipality in Serbia. \
+    st.write("This section allows you to analyze the relationship between the Prosperity, Infrastructure, and Livability pillars for each municipality in Serbia. \
              First, you can highlight a municipality to compare its development status with the other municipalities.  \
              Then, you can select the year and the indicators you want to analyze on 2D scatterplot. \
-             After, the 3D scatterplot will visualize all three scores, giving you a complete view of the development status of each municipality. \
-             Finally, the watercfall charts can help you understand the drivers of the scores and their subdomains.  \
+             After, the 3D scatterplot will visualize all three pillars, giving you a complete view of the development status of each municipality. \
+             Finally, the watercfall charts can help you understand the drivers of the pillars and their development dimensions.  \
              Let's start by highlighting a municipality.")
     
     st.write("")
@@ -226,13 +226,13 @@ with scatterplot:
     
     st.subheader("2D Scatterplot")
     st.write("\
-             This scatterplot shows the relationship between two chosen scores for each municipality in Serbia, filtered by year. \
-             Please adjust the year and the indicators using the dropdown menus below. \
+             This scatterplot shows the relationship between two chosen pillars for each municipality in Serbia, filtered by year. \
+             Please adjust the year and the pillars using the dropdown menus below. \
              The highlighted <strong style='color:red'>municipality</strong> and <strong style='color:orange'>others belonging in the same district</strong> will be highlighted in the plot. \
              ", unsafe_allow_html=True)
-    st.write("The quadrant shading indicates the relative performance of the municipalities in the two chosen scores. \
-             The top-right quadrant (green) is the best performing municipalities, the top-left quadrant (yellow) is the best performing municipalities in the  score on the y-axis, \
-             the bottom-right quadrant (yellow) is the best performing municipalities in the first chosen score on the x-axis, and the bottom-left quadrant (red) is the least performing municipalities in the two chosen scores. \
+    st.write("The quadrant shading indicates the relative performance of the municipalities in the two chosen pillars. \
+             The top-right quadrant (green) is the best performing municipalities, the top-left quadrant (yellow) is the best performing municipalities in the pillar on the y-axis, \
+             the bottom-right quadrant (yellow) is the best performing municipalities in the first chosen pillar on the x-axis, and the bottom-left quadrant (red) is the least performing municipalities in the two chosen pillars. \
              ")
     
     
@@ -296,7 +296,7 @@ with scatterplot:
     # 3D Scatterplot
     st.subheader("3D Scatterplot")
     st.write("\
-             This scatterplot shows the Prosperity Score, Infrastructure Score, and Livability Score for each municipality in Serbia, filtered by year. \
+             This scatterplot shows the Prosperity, Infrastructure, and Livability scores (scaled between 0 and 100) for each municipality in Serbia, filtered by year. \
              Please adjust the year using the dropdown menu below. \
              The highlighted <strong style='color:red'>municipality</strong> and <strong style='color:orange'>others belonging in the same district</strong> will be highlighted, in red and orange colors respectively, on the plot for better visualization. \
              ", unsafe_allow_html=True)
@@ -328,22 +328,21 @@ with scatterplot:
         
 with choropleth:
     st.header("🗺️ Single Score Analysis")
-    st.write("This section allows you to analyze individual scores and indicators for each municipality in Serbia. \
+    st.write("This section allows you to analyze individual pillars, dimensions, and indicators for each municipality in Serbia. \
              First, you can highlight a municipality to compare its development status with the other municipalities.  \
-             Then, you can select the year and the indicator or score you want to analyze on the map. \
-             After, the map will show the relationship between the indicator and the score. \
-             Finally, the waterfall chart can help you understand the drivers of the score and their subdomains. \
+             Then, you can select the year and the pillar, dimension, or indicator you want to analyze on the map. \
+             Finally, the waterfall chart can help you understand the drivers of the pillars and their development dimensions, which are composite scores of the dimensions and indicators, respectively, scaled between 0 and 100. \
              Let's start by highlighting a municipality.")
     
     st.write("")
     
     st.subheader("Choropleth Plot")
     st.markdown("\
-             This map plot shows the spatial distribution of the chosen score or indicator for each municipality in Serbia, filtered by year. \
-             Please adjust the year and the indicator or score using the dropdown menus below. \
+             This map plot shows the spatial distribution of the chosen pillar, dimension, or indicator for each municipality in Serbia, filtered by year. \
+             Please adjust the year and the pillar, dimension, or indicator using the dropdown menus below. \
              The highlighted <strong style='color:red'>municipality</strong> and <strong style='color:orange'>others belonging in the same district</strong>  will be highlighted on the map. \
-             You can hover over the map to see the value of the score or indicator for each municipality. \
-             The colorbar,on the right, shows the range of values, scaled between 0 and 100, for the chosen score or indicator. \
+             You can hover over the map to see the value of the pillar, dimension, or indicator for each municipality. \
+             The colorbar,on the right, shows the range of values, scaled between 0 and 100, for the chosen pillar, dimension, or indicator. \
              ", unsafe_allow_html=True)
     
     # Prepare data
@@ -397,16 +396,16 @@ with choropleth:
     st.text("")
     
     # Score Driver
-    st.subheader("Score Driver Composition")
+    st.subheader("Pillar's key drivers")
     st.markdown("""
-This waterfall chart shows the drivers of the Prosperity Score, Infrastructure Score, Livability Score. 
-The drivers demonstrate how each component contributes to the overall score.
+This waterfall chart shows the drivers of the Prosperity, Infrastructure, Livability pillars. 
+The drivers demonstrate how each component contributes to the overall pillar's score.
 
-- The **<strong style='color:blue'>left blue bar</strong> (Baseline)** is the average score across all municipalities in Serbia.
-- The **<strong style='color:blue'>right blue bar</strong> (Actual)** is the municipality's actual composite score.
-- The **bars between the Baseline and Actual (Gaps)** = "how positively (<strong style='color:green'>green</strong>) or negatively (<strong style='color:red'>red</strong>) this region is from the average score, in score points".
+- The **<strong style='color:blue'>left blue bar</strong> (Country Mean)** is the average pillar score across all municipalities in Serbia.
+- The **<strong style='color:orange'>right orange bar</strong> (Actual)** is the municipality's actual pillar score.
+- The **bars between the Country Mean and Actual (Gaps)** = "how positively (<strong style='color:green'>green</strong>) or negatively (<strong style='color:red'>red</strong>) this region is from the average score, in score points".
 
-Please adjust the score using the dropdown menu below.
+Please adjust the pillar using the dropdown menu below.
     """, unsafe_allow_html=True)
     render_waterfall_chart_options(["Prosperity Score", "Infrastructure Score", "Livability Score"], "main")
     score_name = st.session_state.option_score_name_waterfall
@@ -415,16 +414,16 @@ Please adjust the score using the dropdown menu below.
         st.plotly_chart(fig_waterfall, use_container_width=True)
         
     # Subscore Driver
-    st.subheader("Sub-Score Driver Composition")
+    st.subheader("Development Dimension's key drivers")
     st.markdown("""
-This waterfall chart shows the drivers of the subscores in the Energy Access, Digitalization, Sustainable Transport, Education, Health, and Environment Domains. 
-The drivers demonstrate how each component contributes to the overall score.
+This waterfall chart shows the drivers of the development dimensions, comprised of Energy Access, Digitalization, Sustainable Transport, Education, Health, and Environment. 
+The drivers demonstrate how each component contributes to the overall dimension's score.
 
-- The **<strong style='color:blue'>left blue bar</strong> (Baseline)** is the average score across all municipalities in Serbia.
-- The **<strong style='color:blue'>right blue bar</strong> (Actual)** is the municipality's actual composite score.
-- The **bars between the Baseline and Actual (Gaps)** = "how positively (<strong style='color:green'>green</strong>) or negatively (<strong style='color:red'>red</strong>) this region is from the average score, in score points".
+- The **<strong style='color:blue'>left blue bar</strong> (Country Mean)** is the average score across all municipalities in Serbia.
+- The **<strong style='color:orange'>right orange bar</strong> (Actual)** is the municipality's actual dimension's score.
+- The **bars between the Country Mean and Actual (Gaps)** = "how positively (<strong style='color:green'>green</strong>) or negatively (<strong style='color:red'>red</strong>) this region is from the average dimension's score, in score points".
 
-Please adjust the subscore using the dropdown menu below.
+Please adjust the development dimension using the dropdown menu below.
     """, unsafe_allow_html=True)
     
     

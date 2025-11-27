@@ -167,7 +167,7 @@ st.markdown("""
 
 The **GPBP Local Development Tracker Decision Engine (LDT-DE)** provides a comprehensive framework for 
 evaluating municipal development priorities in Serbia. The methodology combines quantitative indicators 
-across multiple domains with AI-powered analysis to support evidence-based decision-making for regional 
+across multiple development dimensions with AI-powered analysis to support evidence-based decision-making for regional 
 development investments.
 
 This page describes the data sources, processing methods, and analytical framework that underpin the 
@@ -188,24 +188,25 @@ Indicators were selected based on:
 - Feedback provided by **Local Governments** from municipalities across Serbia (e.g Veliko Gradiste, etc...).
 - Selection framework based on the **Western Balkans Investment Framework (WBIF)**.
 
-Indicators span three key pillars: **Prosperity**, **Livability**, and **Infrastructure**. Each pillar is composed of key development domains defined by the WBIF.
+Indicators span three key pillars: **Prosperity**, **Livability**, and **Infrastructure**. Each pillar is composed of key development dimensions.
 """)
 
 st.image("images/Indicators Map.png", use_container_width=True)
 
-st.markdown("### Development Domains")
+st.markdown("### Development Pillars")
 
 st.markdown("""
-**Prosperity** indicators focus on the region's ability to provide energy, as a proxy to economic development, to its population. It is currently composed of the *Energy Access* domain.
+**Prosperity**  focuses on the region's ability to provide energy, as a proxy to economic development, to its population. It is currently composed of the *Energy Access* dimension.
 - Access to energy, with the use of nighttime luminosity to measure how easily a region's population and built up areas have access to energy.
 - Intensity of energy consumption, using luminosity to measure how much energy is consumed per capita and per area.
+- Proxies for GDP and GDP per Capita
 
-**Livability** indicators measure the region's ability to provide various aspects of human development. It is currently composed of the *Education*, *Health*, and *Environment* domains.
+**Livability** measures the region's ability to provide various aspects of human development. It is currently composed of the *Education*, *Health*, and *Environment* dimensions.
 - Solid waste management systems accessibility and stress.
 - Emissions of Greenhouse Gases and Air Quality.
 - Access to services for human development, such as healthcare and education.
 
-**Infrastructure** indicators focus on the region's ability to provide and maintain basic infrastructure to its population. It is currently composed of the *Digitalization*, *Sustainable Transport* domains.
+**Infrastructure** focuses on the region's ability to provide and maintain basic infrastructure to its population. It is currently composed of the *Digitalization*, *Sustainable Transport* dimensions.
 - Transportation networks (road, rail connectivity) and their vulnerability to climate risks.
 - Digital connectivity and performance.
 """)
