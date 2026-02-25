@@ -307,11 +307,11 @@ SCORE_COLS_DICT = {"Prosperity Score": [
             "Infrastructure Score": [
                 "Digitalization Score",
                 "Sustainable Transport Score",
+                "Education Score",
+                "Health Score",
 
                 ],
             "Livability Score": [
-                "Education Score",
-                "Health Score",
                 "Environment Score",
             ]
             }

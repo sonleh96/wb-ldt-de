@@ -44,6 +44,7 @@ st.logo("images/LDT-logo.png", size='large')
 with st.sidebar:
     st.image(pimpam_logo, use_container_width=True)
     st.image("images/GPBP Logo.png", use_container_width=True)
+    st.image("images/Flag_of_Serbia_2.png" )
 
 home_page = st.Page("home.py", title="Home")
 

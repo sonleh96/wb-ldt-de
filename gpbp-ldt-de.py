@@ -106,7 +106,7 @@ def load_data(_storage_client):
     )
     
     df_score = read_csv_from_gcs(
-        _storage_client, BUCKET_NAME, "decision_engine/inputs/SRB_Full_Score_v7.csv"
+        _storage_client, BUCKET_NAME, "decision_engine/inputs/SRB_Full_Score_v8.csv"
     )
     
     df_dev_plan = read_csv_from_gcs(

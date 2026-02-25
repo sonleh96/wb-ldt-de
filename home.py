@@ -150,7 +150,7 @@ st.markdown("""
         }
         
         .hero-description {
-            font-size: 10rem;
+            font-size: 10 rem;
             line-height: 1.8;
             margin-bottom: 50px;
             color: #4b5563;
