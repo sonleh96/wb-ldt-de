@@ -196,19 +196,19 @@ st.image("images/Indicators Map.png", use_container_width=True)
 st.markdown("### Development Pillars")
 
 st.markdown("""
-**Prosperity**  focuses on the region's ability to provide energy, as a proxy to economic development, to its population. It is currently composed of the *Energy Access* dimension.
-- Access to energy, with the use of nighttime luminosity to measure how easily a region's population and built up areas have access to energy.
+**Prosperity**  focuses on the region's ability to provide energy, as a proxy to economic development, to its population. It is currently composed of the indicators related to Nighttime Luminosity.
+- The use of nighttime luminosity to measure how easily a region's population and built up areas have access to energy.
 - Intensity of energy consumption, using luminosity to measure how much energy is consumed per capita and per area.
 - Proxies for GDP and GDP per Capita
 
-**Livability** measures the region's ability to provide various aspects of human development. It is currently composed of the *Education*, *Health*, and *Environment* dimensions.
+**Livability** measures the region's ability to provide a positive environment conducive to human development. It is currently composed of *Environment* dimensions.
 - Solid waste management systems accessibility and stress.
 - Emissions of Greenhouse Gases and Air Quality.
-- Access to services for human development, such as healthcare and education.
 
-**Infrastructure** focuses on the region's ability to provide and maintain basic infrastructure to its population. It is currently composed of the *Digitalization*, *Sustainable Transport* dimensions.
+**Infrastructure** focuses on the region's ability to provide and maintain basic infrastructure to its population. It is currently composed of the *Digitalization*, *Sustainable Transport*, *Health*, and *Education* dimensions.
 - Transportation networks (road, rail connectivity) and their vulnerability to climate risks.
 - Digital connectivity and performance.
+- Access to services for human development, such as healthcare and education.
 """)
 
 st.markdown("<hr style='border: 1px solid #ddd; margin: 2rem 0;'>", unsafe_allow_html=True)

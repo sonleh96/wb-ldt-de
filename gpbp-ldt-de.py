@@ -102,7 +102,7 @@ def load_data(_storage_client):
     )
     
     gdf_score_geom = read_geojson_from_gcs(
-        _storage_client, BUCKET_NAME, "decision_engine/inputs/SRB_Full_geom_v7.json"
+        _storage_client, BUCKET_NAME, "decision_engine/inputs/SRB_Full_geom_v8.json"
     )
     
     df_score = read_csv_from_gcs(
