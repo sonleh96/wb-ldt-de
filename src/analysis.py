@@ -187,8 +187,11 @@ def prepare_3d_scatter_data(df_scatter: pd.DataFrame, year: int) -> pd.DataFrame
     Returns:
         Filtered and renamed DataFrame for 3D plotting
     """
-    slice_3d = df_scatter[["NAME_1", 'ENGLISH_NAME', 'year', 'Livability Score', 'Infrastructure Score', 'Prosperity Score']]
-    slice_3d = slice_3d[slice_3d['year'] == year]
+    score_cols = ['Livability Score', 'Infrastructure Score', 'Prosperity Score']
+    slice_3d = df_scatter[["NAME_1", 'ENGLISH_NAME', 'year'] + score_cols].copy()
+    slice_3d['year'] = slice_3d['year'].astype(int)
+    slice_3d = slice_3d[slice_3d['year'] == int(year)]
+    slice_3d = slice_3d.dropna(subset=score_cols)
     slice_3d = slice_3d.rename({'NAME_1': 'District', 'ENGLISH_NAME': 'Municipality'}, axis=1)
     return slice_3d
 

@@ -217,8 +217,19 @@ with scatterplot:
     
     st.write("")
     
-    # Prepare data
+    # Prepare data - merge dimension scores and compute pillar scores
     df_scatter = pd.DataFrame(gdf_score_geom.drop(['population_total'], axis=1))
+    df_scatter = df_scatter.merge(
+        df_score[['GID_2', 'year', 'Energy Access Score', 'Digitalization Score', 
+                  'Sustainable Transport Score', 'Education Score', 'Health Score', 'Environment Score']], 
+        on=['GID_2', 'year'], 
+        how='left'
+    )
+    # Compute pillar scores from dimension scores
+    df_scatter['Prosperity Score'] = df_scatter['Energy Access Score']
+    df_scatter['Infrastructure Score'] = df_scatter[['Digitalization Score', 'Sustainable Transport Score', 
+                                                      'Education Score', 'Health Score']].mean(axis=1)
+    df_scatter['Livability Score'] = df_scatter['Environment Score']
     name_lookup = {normalize(s): s for s in df_scatter["ENGLISH_NAME"].unique()}
     
     # Read from global sidebar selector
@@ -395,28 +406,31 @@ with choropleth:
     st.text("")
     st.text("")
     
-    # Score Driver
+    # Score Driver - All Three Pillars
     st.subheader("Pillar's key drivers")
     st.markdown("""
-This chart shows what's driving the difference between the municipality's score and the country average.
+These charts show what's driving the difference between the municipality's pillar scores and the country average.
 
 - **Bars to the right (<strong style='color:#54a24b'>green</strong>)** = components pushing the municipality **above** average
 - **Bars to the left (<strong style='color:#e45756'>red</strong>)** = components pulling the municipality **below** average
 - **Components are sorted by absolute contribution** (largest impact first)
 
-Please adjust the pillar using the dropdown menu below.
+**Note:** Prosperity shows Energy Access components, Livability shows Environment components, and Infrastructure shows its four dimensions.
     """, unsafe_allow_html=True)
-    render_waterfall_chart_options(["Prosperity Score", "Infrastructure Score", "Livability Score"], "main")
-    score_name = st.session_state.option_score_name_waterfall
-    fig_waterfall = create_waterfall_chart(df_score, "main")
-    if fig_waterfall:
-        st.plotly_chart(fig_waterfall, use_container_width=True)
+    
+    # Display all three pillars vertically, each with full width
+    pillar_names = ["Prosperity Score", "Livability Score", "Infrastructure Score"]
+    
+    for pillar in pillar_names:
+        fig = create_waterfall_chart(df_score, score_col_override=pillar)
+        if fig:
+            st.plotly_chart(fig, use_container_width=True)
         
     # Subscore Driver
     st.subheader("Development Dimension's key drivers")
     st.markdown("""
 This chart shows what's driving the difference between the municipality's dimension score and the country average.
-Development dimensions include Energy Access, Digitalization, Sustainable Transport, Education, Health, and Environment.
+Development dimensions include Digitalization, Sustainable Transport, Education, and Health.
 
 - **Bars to the right (<strong style='color:#54a24b'>green</strong>)** = components pushing the municipality **above** average
 - **Bars to the left (<strong style='color:#e45756'>red</strong>)** = components pulling the municipality **below** average
@@ -425,10 +439,8 @@ Development dimensions include Energy Access, Digitalization, Sustainable Transp
 Please adjust the development dimension using the dropdown menu below.
     """, unsafe_allow_html=True)
     
-    
-    render_waterfall_chart_options(["Energy Access Score", "Digitalization Score", "Sustainable Transport Score", "Education Score", "Health Score", "Environment Score"], 
+    render_waterfall_chart_options(["Digitalization Score", "Sustainable Transport Score", "Education Score", "Health Score"], 
                                    "sub")
-    sub_score_name = st.session_state.option_subscore_name_waterfall
     fig_waterfall_sub = create_waterfall_chart(df_score, "sub")
     if fig_waterfall_sub:
         st.plotly_chart(fig_waterfall_sub, use_container_width=True)

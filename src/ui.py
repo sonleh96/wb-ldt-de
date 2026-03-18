@@ -399,29 +399,39 @@ def highlight_municipality_3d(fig, sel, name):
 
 def render_waterfall_chart_options(score_names, score_type="main"):
     if score_type == "main":
-        score_name = st.selectbox(
+        default_idx = score_names.index('Prosperity Score') if 'Prosperity Score' in score_names else 0
+        st.selectbox(
             "Choose a score to analyze:",
             score_names,
-            index=score_names.index('Prosperity Score'),
+            index=default_idx,
             key="option_score_name_waterfall")
     if score_type == "sub":
-        sub_score_name = st.selectbox(
+        default_idx = score_names.index('Digitalization Score') if 'Digitalization Score' in score_names else 0
+        st.selectbox(
             "Choose a subscore to analyze:",
             score_names,
-            index=score_names.index('Energy Access Score'),
+            index=default_idx,
             key="option_subscore_name_waterfall")
     
     return None
 
 
-def create_waterfall_chart(slice_waterfall, score_type="main"):
+def create_waterfall_chart(slice_waterfall, score_type="main", score_col_override=None):
     """Create a sorted horizontal diverging bar chart showing component contributions."""
-    if score_type == "main":
+    if score_col_override:
+        score_col = score_col_override
+        if score_col in SCORE_COLS_DICT:
+            sub_cols = SCORE_COLS_DICT[score_col]
+        else:
+            sub_cols = SUB_COLS_DICT[score_col]
+    elif score_type == "main":
         score_col = st.session_state.option_score_name_waterfall
         sub_cols = SCORE_COLS_DICT[score_col]
-    if score_type == "sub":
+    elif score_type == "sub":
         score_col = st.session_state.option_subscore_name_waterfall
         sub_cols = SUB_COLS_DICT[score_col]
+    else:
+        return None
     
     weights = {c: 1/len(sub_cols) for c in sub_cols}
 
@@ -454,10 +464,10 @@ def create_waterfall_chart(slice_waterfall, score_type="main"):
     if not municipality:
         return None
 
-    row_df = df.loc[df["ENGLISH_NAME"] == municipality, sub_cols + [score_col]].head(1)
+    row_df = df.loc[df["ENGLISH_NAME"] == municipality, sub_cols].head(1)
     if row_df.empty:
         try:
-            any_year_df = slice_waterfall.loc[slice_waterfall["ENGLISH_NAME"] == municipality, sub_cols + [score_col]].head(1)
+            any_year_df = slice_waterfall.loc[slice_waterfall["ENGLISH_NAME"] == municipality, sub_cols].head(1)
             if any_year_df.empty:
                 return None
             row_df = any_year_df

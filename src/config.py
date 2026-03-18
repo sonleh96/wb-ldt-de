@@ -302,17 +302,21 @@ CHART_COLORS = {
 }
 
 SCORE_COLS_DICT = {"Prosperity Score": [
-                "Energy Access Score",
+                'Luminosity Score', 'Luminosity per Capita Score',
+                'Luminosity per Area Score', 'Area Lit Score', 'Population Lit Score'
                 ],
             "Infrastructure Score": [
                 "Digitalization Score",
                 "Sustainable Transport Score",
                 "Education Score",
                 "Health Score",
-
                 ],
             "Livability Score": [
-                "Environment Score",
+                'CO2e-Emissions Score', 
+                'Methane-Emissions Score',
+                'Air Quality Score',
+                'Waste Disposal Score',
+                'Waste Disposal Gap Score'
             ]
             }
 
