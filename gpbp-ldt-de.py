@@ -398,12 +398,11 @@ with choropleth:
     # Score Driver
     st.subheader("Pillar's key drivers")
     st.markdown("""
-This waterfall chart shows the drivers of the Prosperity, Infrastructure, Livability pillars. 
-The drivers demonstrate how each component contributes to the overall pillar's score.
+This chart shows what's driving the difference between the municipality's score and the country average.
 
-- The **<strong style='color:blue'>left blue bar</strong> (Country Mean)** is the average pillar score across all municipalities in Serbia.
-- The **<strong style='color:orange'>right orange bar</strong> (Actual)** is the municipality's actual pillar score.
-- The **bars between the Country Mean and Actual (Gaps)** = "how positively (<strong style='color:green'>green</strong>) or negatively (<strong style='color:red'>red</strong>) this region is from the average score, in score points".
+- **Bars to the right (<strong style='color:#54a24b'>green</strong>)** = components pushing the municipality **above** average
+- **Bars to the left (<strong style='color:#e45756'>red</strong>)** = components pulling the municipality **below** average
+- **Components are sorted by absolute contribution** (largest impact first)
 
 Please adjust the pillar using the dropdown menu below.
     """, unsafe_allow_html=True)
@@ -416,12 +415,12 @@ Please adjust the pillar using the dropdown menu below.
     # Subscore Driver
     st.subheader("Development Dimension's key drivers")
     st.markdown("""
-This waterfall chart shows the drivers of the development dimensions, comprised of Energy Access, Digitalization, Sustainable Transport, Education, Health, and Environment. 
-The drivers demonstrate how each component contributes to the overall dimension's score.
+This chart shows what's driving the difference between the municipality's dimension score and the country average.
+Development dimensions include Energy Access, Digitalization, Sustainable Transport, Education, Health, and Environment.
 
-- The **<strong style='color:blue'>left blue bar</strong> (Country Mean)** is the average score across all municipalities in Serbia.
-- The **<strong style='color:orange'>right orange bar</strong> (Actual)** is the municipality's actual dimension's score.
-- The **bars between the Country Mean and Actual (Gaps)** = "how positively (<strong style='color:green'>green</strong>) or negatively (<strong style='color:red'>red</strong>) this region is from the average dimension's score, in score points".
+- **Bars to the right (<strong style='color:#54a24b'>green</strong>)** = components pushing the municipality **above** average
+- **Bars to the left (<strong style='color:#e45756'>red</strong>)** = components pulling the municipality **below** average
+- **Components are sorted by absolute contribution** (largest impact first)
 
 Please adjust the development dimension using the dropdown menu below.
     """, unsafe_allow_html=True)

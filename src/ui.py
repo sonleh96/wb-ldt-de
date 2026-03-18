@@ -415,6 +415,7 @@ def render_waterfall_chart_options(score_names, score_type="main"):
 
 
 def create_waterfall_chart(slice_waterfall, score_type="main"):
+    """Create a sorted horizontal diverging bar chart showing component contributions."""
     if score_type == "main":
         score_col = st.session_state.option_score_name_waterfall
         sub_cols = SCORE_COLS_DICT[score_col]
@@ -422,12 +423,9 @@ def create_waterfall_chart(slice_waterfall, score_type="main"):
         score_col = st.session_state.option_subscore_name_waterfall
         sub_cols = SUB_COLS_DICT[score_col]
     
-    # weights must sum to 1 (change to your real weights)
     weights = {c: 1/len(sub_cols) for c in sub_cols}
 
-    # --- DATA (use your own df; here we reuse the filtered slice used for the map) ---
-    df = slice_waterfall.copy()  # or slice_choropleth merged with sub-scores
-    # Filter to selected year if present
+    df = slice_waterfall.copy()
     current_year = st.session_state.get("selected_year", 2024)
     try:
         if "year" in df.columns:
@@ -435,11 +433,9 @@ def create_waterfall_chart(slice_waterfall, score_type="main"):
             if not df_year.empty:
                 df = df_year
     except Exception:
-        pass  # if no year column or filtering fails
+        pass
 
-    # Read municipality from global selector; accept partial/accent-free matches
     muni_input = str(st.session_state.get('highlight_municipality', "Veliko Gradište") or "").strip()
-    # Build lookup on available names
     try:
         available = list(df["ENGLISH_NAME"].dropna().unique())
     except Exception:
@@ -448,24 +444,18 @@ def create_waterfall_chart(slice_waterfall, score_type="main"):
     key = normalize(muni_input)
     municipality = lookup.get(key)
     if not municipality and key:
-        # try substring matches
         candidates = [orig for norm, orig in lookup.items() if key in norm]
         if len(candidates) == 1:
             municipality = candidates[0]
         elif len(candidates) > 1:
-            # prefer the shortest match (often exact municipality) as a heuristic
             municipality = min(candidates, key=len)
     if not municipality:
         municipality = "Veliko Gradište" if "Veliko Gradište" in available else (available[0] if available else None)
     if not municipality:
         return None
 
-    baseline_mode = "Country mean"
-    
-    # --- pick row + compute baseline ---
     row_df = df.loc[df["ENGLISH_NAME"] == municipality, sub_cols + [score_col]].head(1)
     if row_df.empty:
-        # fallback: try any year for that municipality
         try:
             any_year_df = slice_waterfall.loc[slice_waterfall["ENGLISH_NAME"] == municipality, sub_cols + [score_col]].head(1)
             if any_year_df.empty:
@@ -474,50 +464,100 @@ def create_waterfall_chart(slice_waterfall, score_type="main"):
         except Exception:
             return None
     row = row_df.iloc[0]
-    if baseline_mode == "Country mean":
-        baseline_sub = df[sub_cols].mean()
-        baseline_total = np.sum([weights[c]*baseline_sub[c] for c in sub_cols])
-    else:
-        baseline_sub = pd.Series({c: 50 for c in sub_cols})
-        baseline_total = 50  # if your Prosperity Score is a weighted average on 0–100
-
-    # --- contributions (positive raises Prosperity, negative lowers) ---
-    diff = row[sub_cols] - baseline_sub
-    contrib = pd.Series({c: weights[c]*diff[c] for c in sub_cols}).sort_values()
-
-    # reconcile total (small numeric drift)
-    # estimated_total = baseline_total + contrib.sum()
-    actual_total = float(row[score_col])
-
-    # --- WATERFALL CHART ---
-    fig = go.Figure(go.Waterfall(
-        name=f"{score_col} Drivers",
-        orientation="v",
-        measure=["absolute"] + ["relative"] * len(contrib) + ["total"],
-        x=["Country Average"] + contrib.index.tolist() + ["Municipality's Score"],
-        text=[f"{baseline_total:.2f}"] + [f"{v:+.2f}" for v in contrib.values] + [f"{actual_total:.2f}"],
-        y=[baseline_total] + contrib.values.tolist() + [actual_total - baseline_total],
-        decreasing={"marker": {"color": "#e45756"}},  # lowers score
-        increasing={"marker": {"color": "#54a24b"}},  # raises score
-        totals={"marker": {"color": "#4c78a8"}},
+    
+    baseline_sub = df[sub_cols].mean()
+    baseline_total = np.sum([weights[c]*baseline_sub[c] for c in sub_cols])
+    
+    muni_sub = row[sub_cols]
+    actual_total = np.sum([weights[c]*muni_sub[c] for c in sub_cols])
+    
+    diff = muni_sub - baseline_sub
+    contrib = pd.Series({c: weights[c]*diff[c] for c in sub_cols})
+    total_diff = contrib.sum()
+    
+    contrib_sorted = contrib.reindex(contrib.abs().sort_values(ascending=True).index)
+    
+    component_names = [name.replace(' Score', '') for name in contrib_sorted.index]
+    values = contrib_sorted.values
+    colors = ['#54a24b' if v >= 0 else '#e45756' for v in values]
+    
+    fig = go.Figure()
+    
+    fig.add_trace(go.Bar(
+        y=component_names,
+        x=values,
+        orientation='h',
+        marker=dict(color=colors),
+        text=[f"{v:+.2f}" for v in values],
+        textposition='outside',
+        textfont=dict(size=14, color='black'),
+        hovertemplate="<b>%{y}</b><br>Contribution: %{x:+.2f} points<extra></extra>"
     ))
+    
+    fig.add_vline(x=0, line_width=2, line_color="gray", line_dash="solid")
+    
+    max_abs = max(abs(values.min()), abs(values.max()), 1) * 1.4
+    
+    score_label = score_col.replace(' Score', '')
+    diff_sign = "+" if total_diff >= 0 else ""
+    
+    title_text = (
+        f"<b>{municipality} {score_label} Score: {actual_total:.1f}</b><br>"
+        f"<span style='font-size:16px'>Country average: {baseline_total:.1f} | "
+        f"Difference: {diff_sign}{total_diff:.1f} points</span>"
+    )
+    
     fig.update_layout(
-        title=dict(text=f"{municipality}: Drivers of {score_col.replace(' Score', '')} in {current_year}", font=dict(size=27), x=0.5, xanchor='center', y=0.9),
-        yaxis_title="Score (0–100 scale)",
-        xaxis_title="Components",
-        yaxis_title_font=dict(size=20, color="black"),
-        xaxis_title_font=dict(size=20, color="black"),
-        yaxis=dict(
-            range=[0, 100],
-            tickfont=dict(size=16, color="black"),
+        title=dict(
+            text=title_text,
+            font=dict(size=20),
+            x=0.5,
+            xanchor='center',
+            y=0.95
         ),
         xaxis=dict(
-            tickfont=dict(size=16, color="black"),
+            title="Contribution to difference from country average (score points)",
+            title_font=dict(size=14, color="black"),
+            tickfont=dict(size=12, color="black"),
+            range=[-max_abs, max_abs],
+            zeroline=True,
+            zerolinewidth=2,
+            zerolinecolor='gray',
+            showgrid=True,
+            gridwidth=1,
+            gridcolor='lightgray'
+        ),
+        yaxis=dict(
+            title="",
+            tickfont=dict(size=14, color="black"),
+            automargin=True
         ),
         showlegend=False,
-        margin=dict(l=10, r=20, t=60, b=40),
-        height=600,
-        width=600
+        margin=dict(l=20, r=40, t=100, b=60),
+        height=max(350, 80 + len(sub_cols) * 50),
+        plot_bgcolor='white',
+        annotations=[
+            dict(
+                x=-max_abs * 0.5,
+                y=1.02,
+                xref="x",
+                yref="paper",
+                text="← Below average",
+                showarrow=False,
+                font=dict(size=12, color="#e45756"),
+                xanchor="center"
+            ),
+            dict(
+                x=max_abs * 0.5,
+                y=1.02,
+                xref="x",
+                yref="paper",
+                text="Above average →",
+                showarrow=False,
+                font=dict(size=12, color="#54a24b"),
+                xanchor="center"
+            )
+        ]
     )
     
     return fig
